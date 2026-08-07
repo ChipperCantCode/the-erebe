@@ -235,19 +235,6 @@ label.field {
   margin-top: 10px;
 }
 
-table.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
-table.admin-table th, table.admin-table td {
-  border-bottom: 1px solid var(--border);
-  padding: 6px 8px;
-  text-align: left;
-  vertical-align: top;
-}
-table.admin-table th { color: var(--text-dim); font-weight: 600; }
-
 .tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
 .tabs button { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
 .tabs button.active { background: var(--accent); color: #201808; border-color: var(--accent); }
@@ -277,3 +264,38 @@ footer.foot a { color: var(--text-faint); }
   margin-top: 8px;
 }
 .change-form { border-top: 1px dashed var(--border); padding-top: 10px; }
+
+.progress-track {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+.progress-fill { height: 100%; background: var(--accent); }
+.progress-fill.fulfilled { background: var(--good); }
+.progress-line {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.qty-badge { font-weight: 700; font-size: 1.05rem; color: var(--text); }
+
+.cat-pill.volunteer { border-color: #6f9bd6; color: #9dbfe8; }
+.cat-pill.material { border-color: var(--accent-2); color: var(--accent); }
+.cat-pill.donation { border-color: var(--good); color: var(--good); }
+
+.contrib-row {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.contrib-row .row { margin-top: 8px; }
+.contrib-row .field-group { margin-bottom: 8px; }

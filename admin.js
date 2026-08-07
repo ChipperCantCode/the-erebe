@@ -3,7 +3,6 @@ import {
   getAdminToken,
   setAdminToken,
   clearAdminToken,
-  formatQuantity,
   formatQuantityDisplay,
   quantityInputHtml,
   parseQuantityForItem,
@@ -89,7 +88,7 @@ function renderChangeRequests() {
         <span class="pill ${r.status}">${r.status}</span>
       </div>
       <div class="item-desc">
-        Current: ${formatQuantityDisplay(r.current_quantity, r.item_unit)} → Requested: ${r.requested_quantity == null ? 'remove entirely' : formatQuantityDisplay(r.requested_quantity, r.item_unit)}
+        Current: <span class="qty-badge">${formatQuantityDisplay(r.current_quantity, r.item_unit)}</span> → Requested: <span class="qty-badge">${r.requested_quantity == null ? 'remove entirely' : formatQuantityDisplay(r.requested_quantity, r.item_unit)}</span>
         <br />Reason: ${escapeHtml(r.reason)}
         ${r.admin_note ? `<br />Admin note: ${escapeHtml(r.admin_note)}` : ''}
       </div>
@@ -138,34 +137,48 @@ async function resolveRequest(id, approve, card) {
 function contributionRowHtml(donorId, c) {
   const crewSelect =
     c.item_category === 'volunteer'
-      ? `<select class="edit-crew-location" style="width:100%; margin-top:4px;">
-          ${CREW_LOCATION_OPTIONS.map(([val, label]) => `<option value="${val}" ${(c.crew_location || '') === val ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
-        </select>`
+      ? `<div class="field-group">
+          <label class="field">Where</label>
+          <select class="edit-crew-location">
+            ${CREW_LOCATION_OPTIONS.map(([val, label]) => `<option value="${val}" ${(c.crew_location || '') === val ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+          </select>
+        </div>`
       : '';
+  const details = [];
+  if (c.arrival_date) details.push(`Available from ${c.arrival_date}`);
+  if (c.departure_date) details.push(`until ${c.departure_date}`);
+  if (c.loan_or_donated) details.push(c.loan_or_donated === 'loan' ? 'Loan' : 'Donated');
+  if (c.pickup_method) details.push(`Pickup: ${c.pickup_method}${c.pickup_method_other ? ' — ' + c.pickup_method_other : ''}`);
+  if (c.pickup_timing) details.push(`Timing: ${c.pickup_timing}${c.pickup_timing_other ? ' — ' + c.pickup_timing_other : ''}`);
+  if (c.pickup_location) details.push(`Where from: ${c.pickup_location}`);
+  if (c.care_instructions) details.push(`Notes: ${c.care_instructions}`);
+
   return `
-  <tr data-cid="${c.id}">
-    <td>${escapeHtml(c.item_name)}<br /><span class="pill">${escapeHtml(c.item_category)}</span></td>
-    <td>${quantityInputHtml({ unit: c.item_unit }, 'edit-qty', c.quantity)}</td>
-    <td>
-      <select class="edit-status">
-        <option value="active" ${c.status === 'active' ? 'selected' : ''}>active</option>
-        <option value="removed" ${c.status === 'removed' ? 'selected' : ''}>removed</option>
-      </select>
-    </td>
-    <td style="font-size:0.8rem; color:var(--text-dim);">
-      ${c.crew_location ? `Where: ${escapeHtml(CREW_LOCATION_LABELS[c.crew_location] || c.crew_location)}<br/>` : ''}
-      ${c.arrival_date ? `From: ${escapeHtml(c.arrival_date)}<br/>` : ''}
-      ${c.departure_date ? `Until: ${escapeHtml(c.departure_date)}<br/>` : ''}
-      ${c.loan_or_donated ? escapeHtml(c.loan_or_donated) + '<br/>' : ''}
-      ${c.pickup_method ? escapeHtml(c.pickup_method) + '<br/>' : ''}
-      ${c.pickup_location ? escapeHtml(c.pickup_location) : ''}
-      ${crewSelect}
-    </td>
-    <td>
+  <div class="contrib-row" data-cid="${c.id}">
+    <div class="item-head">
+      <div class="item-name">${escapeHtml(c.item_name)}</div>
+      <span class="pill cat-pill ${escapeHtml(c.item_category)}">${escapeHtml(c.item_category)}</span>
+    </div>
+    ${details.length ? `<div class="item-desc">${escapeHtml(details.join(' · '))}</div>` : ''}
+    <div class="row">
+      <div class="field-group">
+        <label class="field">Quantity${c.item_unit ? ` (${escapeHtml(c.item_unit)})` : ''}</label>
+        ${quantityInputHtml({ unit: c.item_unit }, 'edit-qty', c.quantity)}
+      </div>
+      <div class="field-group">
+        <label class="field">Status</label>
+        <select class="edit-status">
+          <option value="active" ${c.status === 'active' ? 'selected' : ''}>active</option>
+          <option value="removed" ${c.status === 'removed' ? 'selected' : ''}>removed</option>
+        </select>
+      </div>
+    </div>
+    ${crewSelect}
+    <div class="row">
       <button type="button" class="small" data-action="save-contrib">Save</button>
       <button type="button" class="danger small" data-action="delete-contrib">Delete</button>
-    </td>
-  </tr>`;
+    </div>
+  </div>`;
 }
 
 function donorBlockHtml(d) {
@@ -176,19 +189,14 @@ function donorBlockHtml(d) {
       <p style="font-size:0.85rem; color:var(--text-dim);">
         Email: ${escapeHtml(d.email)} ${d.is_anonymous ? '· anonymous on public list' : ''}
       </p>
-      <div style="overflow-x:auto;">
-        <table class="admin-table">
-          <thead><tr><th>Item</th><th>Qty</th><th>Status</th><th>Details</th><th></th></tr></thead>
-          <tbody>${d.contributions.map((c) => contributionRowHtml(d.id, c)).join('')}</tbody>
-        </table>
-      </div>
+      ${d.contributions.map((c) => contributionRowHtml(d.id, c)).join('') || '<p class="intro">No contributions.</p>'}
       <details style="margin-top:10px;">
         <summary style="cursor:pointer; color:var(--accent); font-size:0.85rem;">+ Add an item for this donor</summary>
         <div class="row" style="margin-top:8px;">
           <select class="add-item-select">
             ${dash.wishlist_items.filter((i) => !i.archived).map((i) => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('')}
           </select>
-          <input type="text" class="add-item-qty" placeholder="Quantity" style="max-width:120px;" />
+          <input type="text" class="add-item-qty" placeholder="Quantity" />
           <button type="button" class="small" data-action="add-contrib">Add</button>
         </div>
       </details>
@@ -243,16 +251,16 @@ function renderDonors() {
 
     block.querySelectorAll('[data-action="save-contrib"]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const tr = btn.closest('tr');
-        const cid = tr.dataset.cid;
+        const row = btn.closest('.contrib-row');
+        const cid = row.dataset.cid;
         const c = dash.donors.find((d) => d.id === donorId).contributions.find((x) => x.id === cid);
-        const qty = parseQuantityForItem({ unit: c.item_unit }, tr.querySelector('.edit-qty').value);
+        const qty = parseQuantityForItem({ unit: c.item_unit }, row.querySelector('.edit-qty').value);
         if (!Number.isFinite(qty) || qty <= 0) {
           notice('Enter a valid quantity.');
           return;
         }
-        const status = tr.querySelector('.edit-status').value;
-        const crewLocationSelect = tr.querySelector('.edit-crew-location');
+        const status = row.querySelector('.edit-status').value;
+        const crewLocationSelect = row.querySelector('.edit-crew-location');
         const crewLocation = crewLocationSelect ? crewLocationSelect.value || null : c.crew_location;
         const { error } = await supabase.rpc('admin_set_contribution', {
           p_session_token: token,
@@ -281,8 +289,8 @@ function renderDonors() {
 
     block.querySelectorAll('[data-action="delete-contrib"]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const tr = btn.closest('tr');
-        const cid = tr.dataset.cid;
+        const row = btn.closest('.contrib-row');
+        const cid = row.dataset.cid;
         if (!confirm('Delete this contribution entirely? This cannot be undone.')) return;
         const { error } = await supabase.rpc('admin_delete_contribution', { p_session_token: token, p_id: cid });
         if (error) {
@@ -320,33 +328,83 @@ function renderDonors() {
 
 // ---------------- Wishlist items ----------------
 
-function itemRowHtml(i) {
+function progressHtml(i) {
+  const committed = Number(i.committed_quantity) || 0;
+  if (i.target_quantity != null) {
+    const pct = Math.max(0, Math.min(100, Math.round((committed / i.target_quantity) * 100)));
+    const fulfilled = committed >= i.target_quantity;
+    return `
+      <div class="progress-line">
+        <span class="qty-badge">${formatQuantityDisplay(committed, i.unit)}</span>
+        <span>of ${formatQuantityDisplay(i.target_quantity, i.unit)}${fulfilled ? ' — fully covered' : ` (${pct}%)`}</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill${fulfilled ? ' fulfilled' : ''}" style="width:${pct}%;"></div></div>`;
+  }
+  return committed > 0
+    ? `<div class="progress-line"><span class="qty-badge">${formatQuantityDisplay(committed, i.unit)}</span><span>committed (open-ended, no target set)</span></div>`
+    : `<div class="progress-line" style="color:var(--text-faint);">Nothing committed yet</div>`;
+}
+
+function itemCardHtml(i) {
   return `
-  <tr data-id="${i.id}">
-    <td><input type="text" class="w-name" value="${escapeHtml(i.name)}" /></td>
-    <td>
-      <select class="w-category">
-        <option value="volunteer" ${i.category === 'volunteer' ? 'selected' : ''}>volunteer</option>
-        <option value="material" ${i.category === 'material' ? 'selected' : ''}>material</option>
-        <option value="donation" ${i.category === 'donation' ? 'selected' : ''}>donation</option>
-      </select>
-    </td>
-    <td><textarea class="w-desc" rows="2" style="min-width:200px;">${escapeHtml(i.description || '')}</textarea></td>
-    <td><input type="number" class="w-target" value="${i.target_quantity ?? ''}" style="width:80px;" step="any" /></td>
-    <td><input type="text" class="w-unit" value="${escapeHtml(i.unit || '')}" style="width:80px;" placeholder="%, USD, etc." /></td>
-    <td><input type="number" class="w-sort" value="${i.sort_order}" style="width:60px;" /></td>
-    <td style="font-size:0.8rem;">committed: ${formatQuantityDisplay(i.committed_quantity, i.unit)}</td>
-    <td>
-      <label class="checkbox-row"><input type="checkbox" class="w-archived" ${i.archived ? 'checked' : ''} /> archived</label>
-    </td>
-    <td><button type="button" class="small" data-action="save-item">Save</button></td>
-  </tr>`;
+  <div class="card" data-id="${i.id}">
+    <div class="item-head">
+      <div class="item-name">${escapeHtml(i.name)}${i.archived ? ' <span class="pill">archived</span>' : ''}</div>
+    </div>
+    ${progressHtml(i)}
+    ${i.description ? `<div class="item-desc">${escapeHtml(i.description)}</div>` : ''}
+    <details style="margin-top:8px;">
+      <summary style="cursor:pointer; color:var(--accent); font-size:0.85rem;">Edit</summary>
+      <div style="margin-top:10px;">
+        <div class="field-group">
+          <label class="field">Name</label>
+          <input type="text" class="w-name" value="${escapeHtml(i.name)}" />
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label class="field">Category</label>
+            <select class="w-category">
+              <option value="volunteer" ${i.category === 'volunteer' ? 'selected' : ''}>volunteer</option>
+              <option value="material" ${i.category === 'material' ? 'selected' : ''}>material</option>
+              <option value="donation" ${i.category === 'donation' ? 'selected' : ''}>donation</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field">Sort order</label>
+            <input type="number" class="w-sort" value="${i.sort_order}" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field">Description</label>
+          <textarea class="w-desc" rows="2">${escapeHtml(i.description || '')}</textarea>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label class="field">Target quantity (blank = open-ended)</label>
+            <input type="number" class="w-target" value="${i.target_quantity ?? ''}" step="any" />
+          </div>
+          <div class="field-group">
+            <label class="field">Unit (%, USD, people, sheets...)</label>
+            <input type="text" class="w-unit" value="${escapeHtml(i.unit || '')}" placeholder="%, USD, etc." />
+          </div>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" class="w-archived" ${i.archived ? 'checked' : ''} /> archived (hidden from public list)</label>
+        <button type="button" class="small" data-action="save-item" style="margin-top:10px;">Save</button>
+      </div>
+    </details>
+  </div>`;
 }
 
 function renderWishlist() {
   const el = document.getElementById('tab-wishlist');
-  el.innerHTML = `
-    <h2 class="section-title" style="margin-top:0;">Wish List Items</h2>
+  const groups = [
+    ['volunteer', 'Volunteers'],
+    ['material', 'Materials & Supplies'],
+    ['donation', 'Donations'],
+  ];
+
+  el.innerHTML =
+    `<h2 class="section-title" style="margin-top:0;">Wish List Items</h2>
     <details class="card">
       <summary style="cursor:pointer; color:var(--accent);">+ Add a new item</summary>
       <div style="margin-top:10px;">
@@ -366,13 +424,16 @@ function renderWishlist() {
         </div>
         <button type="button" id="create-item-btn" class="small" style="margin-top:8px;">Create item</button>
       </div>
-    </details>
-    <div style="overflow-x:auto; margin-top:14px;">
-      <table class="admin-table">
-        <thead><tr><th>Name</th><th>Category</th><th>Description</th><th>Target</th><th>Unit</th><th>Sort</th><th></th><th>Archived</th><th></th></tr></thead>
-        <tbody>${dash.wishlist_items.map(itemRowHtml).join('')}</tbody>
-      </table>
-    </div>`;
+    </details>` +
+    groups
+      .map(([cat, label]) => {
+        const items = dash.wishlist_items.filter((i) => i.category === cat);
+        return (
+          `<h3 style="color:var(--accent); margin: 24px 0 10px;">${label} (${items.length})</h3>` +
+          (items.length ? items.map(itemCardHtml).join('') : '<p class="intro">None yet.</p>')
+        );
+      })
+      .join('');
 
   document.getElementById('create-item-btn').addEventListener('click', async () => {
     const name = document.getElementById('new-item-name').value.trim();
@@ -405,18 +466,18 @@ function renderWishlist() {
 
   el.querySelectorAll('[data-action="save-item"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      const tr = btn.closest('tr');
-      const id = tr.dataset.id;
+      const card = btn.closest('.card');
+      const id = card.dataset.id;
       const { error } = await supabase.rpc('admin_upsert_item', {
         p_session_token: token,
         p_id: id,
-        p_category: tr.querySelector('.w-category').value,
-        p_name: tr.querySelector('.w-name').value.trim(),
-        p_description: tr.querySelector('.w-desc').value.trim() || null,
-        p_target_quantity: tr.querySelector('.w-target').value ? Number(tr.querySelector('.w-target').value) : null,
-        p_unit: tr.querySelector('.w-unit').value.trim() || null,
-        p_sort_order: Number(tr.querySelector('.w-sort').value) || 0,
-        p_archived: tr.querySelector('.w-archived').checked,
+        p_category: card.querySelector('.w-category').value,
+        p_name: card.querySelector('.w-name').value.trim(),
+        p_description: card.querySelector('.w-desc').value.trim() || null,
+        p_target_quantity: card.querySelector('.w-target').value ? Number(card.querySelector('.w-target').value) : null,
+        p_unit: card.querySelector('.w-unit').value.trim() || null,
+        p_sort_order: Number(card.querySelector('.w-sort').value) || 0,
+        p_archived: card.querySelector('.w-archived').checked,
       });
       if (error) {
         notice(rpcErrorMessage(error));
