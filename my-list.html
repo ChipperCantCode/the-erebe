@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My List — The Erebe</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>My List</h1>
+      <p>The Erebe — YOUtopia 2026</p>
+    </div>
+    <nav class="top-links">
+      <a href="index.html">← Wish List</a>
+    </nav>
+  </header>
+
+  <div id="notice-area"></div>
+
+  <div id="login-box" class="card hidden">
+    <h2 class="section-title" style="margin-top:0;">Log in</h2>
+    <div class="row">
+      <div class="field-group">
+        <label class="field">Your chosen name</label>
+        <input id="li-chosen-name" type="text" />
+      </div>
+      <div class="field-group">
+        <label class="field">Your passcode</label>
+        <input id="li-passcode" type="password" />
+      </div>
+    </div>
+    <button type="button" id="login-btn">Log in</button>
+    <p class="intro" style="margin-top:10px;">Haven't signed up yet? <a href="contribute.html">Start here</a>.</p>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div class="card">
+      <div class="row">
+        <div class="field-group">
+          <label class="field">Your name</label>
+          <input id="contact-name" type="text" />
+        </div>
+        <div class="field-group">
+          <label class="field">Email</label>
+          <input id="contact-email" type="email" />
+        </div>
+      </div>
+      <button type="button" id="save-contact" class="secondary small">Save</button>
+      <div class="checkbox-row" style="margin-top:12px;">
+        <input type="checkbox" id="anon-toggle" />
+        <label for="anon-toggle">Keep me anonymous on the public thank-you list</label>
+      </div>
+      <button type="button" id="logout-btn" class="secondary small" style="margin-top:12px;">Log out</button>
+    </div>
+
+    <h2 class="section-title">Your Contributions</h2>
+    <div id="contrib-list"></div>
+
+    <a class="btn" href="contribute.html">+ Add more items</a>
+  </div>
+</div>
+
+<script type="module" src="my-list.js"></script>
+</body>
+</html>

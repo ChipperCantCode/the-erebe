@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign Up to Help — The Erebe</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Sign Up to Help</h1>
+      <p>The Erebe — YOUtopia 2026</p>
+    </div>
+    <nav class="top-links">
+      <a href="index.html">← Wish List</a>
+      <a href="my-list.html">My List</a>
+    </nav>
+  </header>
+
+  <div class="step-indicator">
+    <span class="step" data-step="1">1. Pick what you can help with</span>
+    <span class="step" data-step="2">2. You</span>
+    <span class="step" data-step="3">3. Details</span>
+    <span class="step" data-step="4">4. Review &amp; submit</span>
+  </div>
+
+  <div id="notice-area"></div>
+
+  <!-- STEP 1: item picker -->
+  <section id="step-1">
+    <h2 class="section-title">What can you help with?</h2>
+    <p class="intro">Selected already from the wish list are shown first. Add or remove anything below.</p>
+    <div id="selected-items"></div>
+
+    <details style="margin-top:16px;">
+      <summary style="cursor:pointer; color: var(--accent);">+ Add another item from the full wish list</summary>
+      <div id="full-item-picker" style="margin-top:12px;"></div>
+    </details>
+
+    <div class="sticky-cart" style="margin-top:24px;">
+      <span id="step1-count"></span>
+      <button type="button" id="to-step-2">Next →</button>
+    </div>
+  </section>
+
+  <!-- STEP 2: who you are -->
+  <section id="step-2" class="hidden">
+    <h2 class="section-title">Who's helping?</h2>
+
+    <div id="already-logged-in" class="card hidden">
+      <p>Continuing as <strong id="logged-in-name"></strong>.</p>
+      <button type="button" id="logout-switch" class="secondary small">Not you? Switch account</button>
+    </div>
+
+    <div id="auth-forms">
+      <div class="tabs">
+        <button type="button" class="active" data-mode="signup">First time helping</button>
+        <button type="button" data-mode="login">I've signed up before</button>
+      </div>
+
+      <div id="signup-form" class="card">
+        <div class="field-group">
+          <label class="field">Your name (Inani will use this to reach out)</label>
+          <input id="su-contact-name" type="text" />
+        </div>
+        <div class="field-group">
+          <label class="field">Your email</label>
+          <input id="su-email" type="email" />
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label class="field">Choose a name for logging back in later</label>
+            <input id="su-chosen-name" type="text" />
+          </div>
+          <div class="field-group">
+            <label class="field">Choose a passcode</label>
+            <input id="su-passcode" type="password" />
+          </div>
+        </div>
+      </div>
+
+      <div id="login-form" class="card hidden">
+        <div class="row">
+          <div class="field-group">
+            <label class="field">Your chosen name</label>
+            <input id="li-chosen-name" type="text" />
+          </div>
+          <div class="field-group">
+            <label class="field">Your passcode</label>
+            <input id="li-passcode" type="password" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px;">
+      <button type="button" class="secondary" id="back-to-1">← Back</button>
+      <button type="button" id="to-step-3">Next →</button>
+    </div>
+  </section>
+
+  <!-- STEP 3: per-item details -->
+  <section id="step-3" class="hidden">
+    <h2 class="section-title">A few details</h2>
+    <p class="intro">
+      For the first item, check "use this for every item" on any question where the answer is the same
+      across everything you're helping with — it'll fill in the rest for you.
+    </p>
+    <div id="detail-items"></div>
+    <div class="row" style="margin-top:8px;">
+      <button type="button" class="secondary" id="back-to-2">← Back</button>
+      <button type="button" id="to-step-4">Next →</button>
+    </div>
+  </section>
+
+  <!-- STEP 4: review + submit -->
+  <section id="step-4" class="hidden">
+    <h2 class="section-title">Review &amp; submit</h2>
+
+    <div class="card">
+      <div class="checkbox-row">
+        <input type="checkbox" id="anon-checkbox" />
+        <label for="anon-checkbox">Keep me anonymous on the public thank-you list (we'll show "Anonymous" instead of your name)</label>
+      </div>
+    </div>
+
+    <div id="review-summary"></div>
+
+    <div class="row" style="margin-top:8px;">
+      <button type="button" class="secondary" id="back-to-3">← Back</button>
+      <button type="button" id="submit-btn">Submit</button>
+    </div>
+  </section>
+
+  <section id="step-done" class="hidden">
+    <div class="notice success">
+      Thank you! Your list has been recorded. <a href="my-list.html">View your list any time here</a>.
+    </div>
+  </section>
+</div>
+
+<script type="module" src="contribute.js"></script>
+</body>
+</html>
