@@ -54,13 +54,25 @@
       <button type="button" id="logout-switch" class="secondary small">Not you? Switch account</button>
     </div>
 
-    <div id="auth-forms">
-      <div class="tabs">
-        <button type="button" class="active" data-mode="signup">First time helping</button>
-        <button type="button" data-mode="login">I've signed up before</button>
+    <div id="auth-forms" class="row" style="align-items: flex-start;">
+      <div id="login-form" class="card" style="flex: 1; min-width: 260px;">
+        <h3 style="margin-top:0; color:var(--accent);">Signed up before?</h3>
+        <p class="intro" style="margin-top:0;">Log in with your chosen name to add these to the same list.</p>
+        <div class="row">
+          <div class="field-group">
+            <label class="field">Your chosen name</label>
+            <input id="li-chosen-name" type="text" />
+          </div>
+          <div class="field-group">
+            <label class="field">Your passcode</label>
+            <input id="li-passcode" type="password" />
+          </div>
+        </div>
+        <button type="button" id="login-continue-btn">Log in &amp; continue →</button>
       </div>
 
-      <div id="signup-form" class="card">
+      <div id="signup-form" class="card" style="flex: 1; min-width: 260px;">
+        <h3 style="margin-top:0; color:var(--accent);">First time helping?</h3>
         <div class="field-group">
           <label class="field">Your name (Inani will use this to reach out)</label>
           <input id="su-contact-name" type="text" />
@@ -79,25 +91,12 @@
             <input id="su-passcode" type="password" />
           </div>
         </div>
-      </div>
-
-      <div id="login-form" class="card hidden">
-        <div class="row">
-          <div class="field-group">
-            <label class="field">Your chosen name</label>
-            <input id="li-chosen-name" type="text" />
-          </div>
-          <div class="field-group">
-            <label class="field">Your passcode</label>
-            <input id="li-passcode" type="password" />
-          </div>
-        </div>
+        <button type="button" id="signup-continue-btn">Sign up &amp; continue →</button>
       </div>
     </div>
 
     <div class="row" style="margin-top:8px;">
       <button type="button" class="secondary" id="back-to-1">← Back</button>
-      <button type="button" id="to-step-3">Next →</button>
     </div>
   </section>
 

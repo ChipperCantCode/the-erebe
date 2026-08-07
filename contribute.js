@@ -243,70 +243,62 @@ document.getElementById('logout-switch').addEventListener('click', () => {
   refreshAuthUi();
 });
 
-document.querySelectorAll('.tabs [data-mode]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tabs [data-mode]').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    const mode = btn.dataset.mode;
-    document.getElementById('signup-form').classList.toggle('hidden', mode !== 'signup');
-    document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
-  });
-});
-
 document.getElementById('back-to-1').addEventListener('click', () => showStep('step-1'));
 
-document.getElementById('to-step-3').addEventListener('click', async () => {
+document.getElementById('login-continue-btn').addEventListener('click', async () => {
   clearNotice();
-  if (donorToken) {
-    buildDetailSteps();
-    showStep('step-3');
+  const chosenName = document.getElementById('li-chosen-name').value.trim();
+  const passcode = document.getElementById('li-passcode').value;
+  if (!chosenName || !passcode) {
+    notice('Enter your chosen name and passcode.');
     return;
   }
-
-  const activeMode = document.querySelector('.tabs [data-mode].active').dataset.mode;
-  const btn = document.getElementById('to-step-3');
+  const btn = document.getElementById('login-continue-btn');
   btn.disabled = true;
   try {
-    if (activeMode === 'signup') {
-      const chosenName = document.getElementById('su-chosen-name').value.trim();
-      const passcode = document.getElementById('su-passcode').value;
-      const contactName = document.getElementById('su-contact-name').value.trim();
-      const email = document.getElementById('su-email').value.trim();
-      if (!contactName || !email || !chosenName || !passcode) {
-        notice('Please fill in your name, email, a chosen login name, and a passcode.');
-        return;
-      }
-      const { data, error } = await supabase.rpc('donor_register', {
-        p_chosen_name: chosenName,
-        p_passcode: passcode,
-        p_contact_name: contactName,
-        p_email: email,
-      });
-      if (error) {
-        notice(rpcErrorMessage(error));
-        return;
-      }
-      donorToken = data;
-      setDonorToken(donorToken);
-    } else {
-      const chosenName = document.getElementById('li-chosen-name').value.trim();
-      const passcode = document.getElementById('li-passcode').value;
-      if (!chosenName || !passcode) {
-        notice('Enter your chosen name and passcode.');
-        return;
-      }
-      const { data, error } = await supabase.rpc('donor_login', {
-        p_chosen_name: chosenName,
-        p_passcode: passcode,
-      });
-      if (error) {
-        notice(rpcErrorMessage(error));
-        return;
-      }
-      donorToken = data;
-      setDonorToken(donorToken);
+    const { data, error } = await supabase.rpc('donor_login', {
+      p_chosen_name: chosenName,
+      p_passcode: passcode,
+    });
+    if (error) {
+      notice(rpcErrorMessage(error));
+      return;
     }
+    donorToken = data;
+    setDonorToken(donorToken);
+    await loadDonorInfo();
+    buildDetailSteps();
+    showStep('step-3');
+  } finally {
+    btn.disabled = false;
+  }
+});
 
+document.getElementById('signup-continue-btn').addEventListener('click', async () => {
+  clearNotice();
+  const chosenName = document.getElementById('su-chosen-name').value.trim();
+  const passcode = document.getElementById('su-passcode').value;
+  const contactName = document.getElementById('su-contact-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  if (!contactName || !email || !chosenName || !passcode) {
+    notice('Please fill in your name, email, a chosen login name, and a passcode.');
+    return;
+  }
+  const btn = document.getElementById('signup-continue-btn');
+  btn.disabled = true;
+  try {
+    const { data, error } = await supabase.rpc('donor_register', {
+      p_chosen_name: chosenName,
+      p_passcode: passcode,
+      p_contact_name: contactName,
+      p_email: email,
+    });
+    if (error) {
+      notice(rpcErrorMessage(error));
+      return;
+    }
+    donorToken = data;
+    setDonorToken(donorToken);
     await loadDonorInfo();
     buildDetailSteps();
     showStep('step-3');
