@@ -84,6 +84,59 @@ export function formatQuantity(n) {
   return num.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
 }
 
+// ---------- unit-aware quantity display/input (USD $, % fill, or generic count) ----------
+export function formatQuantityDisplay(n, unit) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return String(n);
+  if (unit === 'USD') {
+    return '$' + num.toLocaleString(undefined, { minimumFractionDigits: num % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+  }
+  if (unit === '%') {
+    return formatQuantity(num) + '%';
+  }
+  return formatQuantity(num) + (unit ? ' ' + unit : '');
+}
+
+// html for the quantity <input> appropriate to an item's unit — % and USD get plain
+// number inputs with sensible min/step, everything else keeps the fraction-capable text input
+export function quantityInputHtml(item, className, existingValue, extraAttrs = '') {
+  const val = existingValue === '' || existingValue == null ? '' : existingValue;
+  if (item.unit === '%') {
+    return `<input type="number" class="${className}" min="1" max="100" step="1" placeholder="% (1-100)" value="${val}" ${extraAttrs} />`;
+  }
+  if (item.unit === 'USD') {
+    return `<input type="number" class="${className}" min="0.01" step="0.01" placeholder="Amount in $" value="${val}" ${extraAttrs} />`;
+  }
+  return `<input type="text" class="${className}" placeholder="Quantity, e.g. 2 or 1/4" value="${val === '' ? '' : formatQuantity(val)}" ${extraAttrs} />`;
+}
+
+export function parseQuantityForItem(item, raw) {
+  if (item.unit === '%' || item.unit === 'USD') {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : NaN;
+  }
+  return parseQuantity(raw);
+}
+
+// ---------- build window + crew location (shared across contribute/my-list/admin) ----------
+export const BUILD_START_DATE = '2026-09-16';
+export const BUILD_END_DATE = '2026-10-07';
+export const BUILD_WINDOW_LABEL = 'Sept 16 – Oct 7, 2026';
+
+export const CREW_LOCATION_OPTIONS = [
+  ['', 'N/A / not sure yet'],
+  ['remote', "Remote — not physically on-site"],
+  ['colab', 'CoLab (prefab shop)'],
+  ['event_site', 'Event site (main build)'],
+  ['both', 'Both CoLab and event site'],
+];
+export const CREW_LOCATION_LABELS = {
+  remote: 'Remote — not physically on-site',
+  colab: 'CoLab (prefab shop)',
+  event_site: 'Event site (main build)',
+  both: 'Both CoLab and event site',
+};
+
 // ---------- misc ----------
 export function escapeHtml(str) {
   if (str == null) return '';

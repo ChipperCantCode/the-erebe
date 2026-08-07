@@ -1,8 +1,18 @@
-import { supabase, getCart, saveCart, parseQuantity, formatQuantity, escapeHtml } from './shared.js';
+import {
+  supabase,
+  getCart,
+  saveCart,
+  formatQuantity,
+  formatQuantityDisplay,
+  quantityInputHtml,
+  parseQuantityForItem,
+  escapeHtml,
+} from './shared.js';
 
 const noticeArea = document.getElementById('notice-area');
 const volunteerList = document.getElementById('volunteer-list');
 const materialList = document.getElementById('material-list');
+const donationList = document.getElementById('donation-list');
 const stickyCart = document.getElementById('sticky-cart');
 const cartCount = document.getElementById('cart-count');
 
@@ -31,14 +41,14 @@ function itemCardHtml(item) {
     const remaining = Math.max(0, item.target_quantity - committed);
     statusLine = fulfilled
       ? `Fully covered — thank you!`
-      : `${formatQuantity(committed)} of ${formatQuantity(item.target_quantity)}${item.unit ? ' ' + escapeHtml(item.unit) : ''} covered (${formatQuantity(remaining)} more needed)`;
+      : `${formatQuantityDisplay(committed, item.unit)} of ${formatQuantityDisplay(item.target_quantity, item.unit)} covered (${formatQuantityDisplay(remaining, item.unit)} more needed)`;
   } else if (committed > 0) {
-    statusLine = `${formatQuantity(committed)}${item.unit ? ' ' + escapeHtml(item.unit) : ''} committed so far`;
+    statusLine = `${formatQuantityDisplay(committed, item.unit)} committed so far`;
   }
 
   const thankyouHtml = thankyous.length
     ? `<div class="thankyou">THANK YOU: ${thankyous
-        .map((t) => `${escapeHtml(t.name)} (${formatQuantity(t.quantity)})`)
+        .map((t) => `${escapeHtml(t.name)} (${formatQuantityDisplay(t.quantity, item.unit)})`)
         .join(', ')}</div>`
     : '';
 
@@ -56,7 +66,7 @@ function itemCardHtml(item) {
     <div class="add-row">
       ${
         inCart
-          ? `<span class="pill approved">In your list: ${formatQuantity(inCart.quantity)}</span>
+          ? `<span class="pill approved">In your list: ${formatQuantityDisplay(inCart.quantity, item.unit)}</span>
              <button type="button" class="secondary small" data-action="edit">Edit</button>
              <button type="button" class="secondary small" data-action="remove">Remove</button>`
           : `<button type="button" class="small" data-action="add">I can help with this</button>`
@@ -64,7 +74,7 @@ function itemCardHtml(item) {
     </div>
     <div class="qty-form hidden">
       <div class="row">
-        <input type="text" class="qty-input" placeholder="How many? e.g. 2, 1/4, 12" value="${inCart ? formatQuantity(inCart.quantity) : ''}" />
+        ${quantityInputHtml(item, 'qty-input', inCart ? inCart.quantity : '')}
         <button type="button" class="small" data-action="confirm">Save</button>
         <button type="button" class="secondary small" data-action="cancel">Cancel</button>
       </div>
@@ -98,9 +108,13 @@ function wireCard(el, item) {
   });
 
   confirmBtn?.addEventListener('click', () => {
-    const qty = parseQuantity(qtyInput.value);
+    const qty = parseQuantityForItem(item, qtyInput.value);
     if (!Number.isFinite(qty) || qty <= 0) {
-      notice('Please enter a valid quantity (a number or fraction like 1/4).');
+      notice('Please enter a valid quantity.');
+      return;
+    }
+    if (item.unit === '%' && qty > 100) {
+      notice('Percentage can\'t be more than 100.');
       return;
     }
     const cart = getCart();
@@ -121,11 +135,13 @@ let allItems = [];
 function render() {
   const volunteers = allItems.filter((i) => i.category === 'volunteer');
   const materials = allItems.filter((i) => i.category === 'material');
+  const donations = allItems.filter((i) => i.category === 'donation');
 
   volunteerList.innerHTML = volunteers.map(itemCardHtml).join('') || '<p class="intro">Nothing here yet.</p>';
   materialList.innerHTML = materials.map(itemCardHtml).join('') || '<p class="intro">Nothing here yet.</p>';
+  donationList.innerHTML = donations.map(itemCardHtml).join('') || '<p class="intro">Nothing here yet.</p>';
 
-  [...volunteerList.children, ...materialList.children].forEach((el) => {
+  [...volunteerList.children, ...materialList.children, ...donationList.children].forEach((el) => {
     const item = allItems.find((i) => i.id === el.dataset.itemId);
     if (item) wireCard(el, item);
   });

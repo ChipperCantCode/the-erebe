@@ -4,9 +4,12 @@ import {
   setDonorToken,
   clearDonorToken,
   formatQuantity,
-  parseQuantity,
+  formatQuantityDisplay,
+  quantityInputHtml,
+  parseQuantityForItem,
   escapeHtml,
   rpcErrorMessage,
+  CREW_LOCATION_LABELS,
 } from './shared.js';
 
 const noticeArea = document.getElementById('notice-area');
@@ -74,19 +77,19 @@ function contributionCardHtml(c) {
   const pending = c.pending_change;
   const removed = c.status === 'removed';
   const details = [];
-  if (c.on_build_crew !== null) details.push(`Build crew: ${c.on_build_crew ? 'Yes' : 'No'}`);
-  if (c.arrival_date) details.push(`Arrival: ${c.arrival_date}`);
-  if (c.departure_date) details.push(`Departure: ${c.departure_date}`);
+  if (c.crew_location) details.push(`Where: ${CREW_LOCATION_LABELS[c.crew_location] || c.crew_location}`);
+  if (c.arrival_date) details.push(`Available from: ${c.arrival_date}`);
+  if (c.departure_date) details.push(`Available until: ${c.departure_date}`);
   if (c.loan_or_donated) details.push(c.loan_or_donated === 'loan' ? 'Loan' : 'Donated');
   if (c.pickup_method) details.push(`Pickup: ${c.pickup_method}${c.pickup_method_other ? ' — ' + c.pickup_method_other : ''}`);
   if (c.pickup_timing) details.push(`Timing: ${c.pickup_timing}${c.pickup_timing_other ? ' — ' + c.pickup_timing_other : ''}`);
-  if (c.pickup_location) details.push(`Where: ${c.pickup_location}`);
-  if (c.care_instructions) details.push(`Care/return: ${c.care_instructions}`);
+  if (c.pickup_location) details.push(`Where from: ${c.pickup_location}`);
+  if (c.care_instructions) details.push(`Notes: ${c.care_instructions}`);
 
   return `
   <div class="card" data-id="${c.id}">
     <div class="item-head">
-      <div class="item-name${removed ? ' fulfilled' : ''}">${escapeHtml(c.item_name)} — ${formatQuantity(c.quantity)}</div>
+      <div class="item-name${removed ? ' fulfilled' : ''}">${escapeHtml(c.item_name)} — ${formatQuantityDisplay(c.quantity, c.item_unit)}</div>
       <span class="pill">${escapeHtml(c.item_category)}</span>
     </div>
     ${details.length ? `<div class="item-desc">${escapeHtml(details.join(' · '))}</div>` : ''}
@@ -94,7 +97,7 @@ function contributionCardHtml(c) {
       removed
         ? `<span class="pill denied">Removed</span>`
         : pending
-        ? `<span class="pill pending">Change requested: ${pending.requested_quantity == null ? 'remove entirely' : 'reduce to ' + formatQuantity(pending.requested_quantity)} — awaiting review</span>`
+        ? `<span class="pill pending">Change requested: ${pending.requested_quantity == null ? 'remove entirely' : 'reduce to ' + formatQuantityDisplay(pending.requested_quantity, c.item_unit)} — awaiting review</span>`
         : `<button type="button" class="secondary small" data-action="change">Request a change</button>`
     }
     <div class="change-form hidden" style="margin-top:10px;">
@@ -106,8 +109,8 @@ function contributionCardHtml(c) {
         </select>
       </div>
       <div class="field-group new-qty-group">
-        <label class="field">New quantity (must be smaller than ${formatQuantity(c.quantity)})</label>
-        <input type="text" class="new-qty-input" />
+        <label class="field">New quantity (must be smaller than ${formatQuantityDisplay(c.quantity, c.item_unit)})</label>
+        ${quantityInputHtml({ unit: c.item_unit }, 'new-qty-input', '')}
       </div>
       <div class="field-group">
         <label class="field">Reason for the change</label>
@@ -143,9 +146,9 @@ function wireContributionCard(el, c) {
     }
     let newQty = null;
     if (typeSelect.value === 'reduce') {
-      newQty = parseQuantity(qtyInput.value);
+      newQty = parseQuantityForItem({ unit: c.item_unit }, qtyInput.value);
       if (!Number.isFinite(newQty) || newQty <= 0 || newQty >= c.quantity) {
-        notice(`New quantity must be a positive number smaller than ${formatQuantity(c.quantity)}.`);
+        notice(`New quantity must be a positive number smaller than ${formatQuantityDisplay(c.quantity, c.item_unit)}.`);
         return;
       }
     }

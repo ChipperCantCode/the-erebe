@@ -5,10 +5,17 @@ import {
   clearCart,
   getDonorToken,
   setDonorToken,
-  parseQuantity,
   formatQuantity,
+  formatQuantityDisplay,
+  quantityInputHtml,
+  parseQuantityForItem,
   escapeHtml,
   rpcErrorMessage,
+  CREW_LOCATION_OPTIONS,
+  CREW_LOCATION_LABELS,
+  BUILD_START_DATE,
+  BUILD_END_DATE,
+  BUILD_WINDOW_LABEL,
 } from './shared.js';
 
 const noticeArea = document.getElementById('notice-area');
@@ -20,19 +27,21 @@ function clearNotice() {
   noticeArea.innerHTML = '';
 }
 
-const FIELD_GROUPS = [
+// Which detail questions apply depends on the item's category — a cash donation doesn't
+// need pickup logistics, a material doesn't need crew availability, etc.
+const VOLUNTEER_FIELD_GROUPS = [
+  { key: 'crew_location', label: 'Where will you help?', type: 'radio', options: CREW_LOCATION_OPTIONS },
   {
-    key: 'on_build_crew',
-    label: 'Will you be part of the build crew for this?',
-    type: 'radio',
-    options: [
-      ['', 'Not sure / N/A'],
-      ['true', 'Yes'],
-      ['false', 'No'],
-    ],
+    key: 'arrival_date',
+    label: `Available from (build runs ${BUILD_WINDOW_LABEL})`,
+    type: 'date',
+    min: BUILD_START_DATE,
+    max: BUILD_END_DATE,
   },
-  { key: 'arrival_date', label: 'Arrival date (if relevant)', type: 'date' },
-  { key: 'departure_date', label: 'Departure date (if relevant)', type: 'date' },
+  { key: 'departure_date', label: 'Available until', type: 'date', min: BUILD_START_DATE, max: BUILD_END_DATE },
+];
+
+const MATERIAL_FIELD_GROUPS = [
   {
     key: 'loan_or_donated',
     label: 'Is this a loan or a donation?',
@@ -64,6 +73,19 @@ const FIELD_GROUPS = [
     type: 'textarea',
   },
 ];
+
+const DONATION_FIELD_GROUPS = [
+  { key: 'care_instructions', label: 'Anything else we should know? (optional)', type: 'textarea' },
+];
+
+const ALL_FIELD_GROUPS = [...VOLUNTEER_FIELD_GROUPS, ...MATERIAL_FIELD_GROUPS, ...DONATION_FIELD_GROUPS];
+
+function fieldGroupsForCategory(category) {
+  if (category === 'volunteer') return VOLUNTEER_FIELD_GROUPS;
+  if (category === 'material') return MATERIAL_FIELD_GROUPS;
+  if (category === 'donation') return DONATION_FIELD_GROUPS;
+  return [];
+}
 
 let allItems = []; // from get_wishlist
 let selected = {}; // item_id -> {quantity, name, category, unit}
@@ -102,7 +124,7 @@ function renderSelectedItems() {
           <div class="row" style="margin-top:6px;">
             <div>
               <label class="field">Quantity</label>
-              <input type="text" class="sel-qty" value="${formatQuantity(s.quantity)}" />
+              ${quantityInputHtml(s, 'sel-qty', s.quantity)}
             </div>
           </div>
         </div>`;
@@ -122,8 +144,8 @@ function renderSelectedItems() {
     el.querySelectorAll('.sel-qty').forEach((input) => {
       input.addEventListener('change', (e) => {
         const id = e.target.closest('.card').dataset.id;
-        const q = parseQuantity(e.target.value);
-        if (Number.isFinite(q) && q > 0) {
+        const q = parseQuantityForItem(selected[id], e.target.value);
+        if (Number.isFinite(q) && q > 0 && !(selected[id].unit === '%' && q > 100)) {
           selected[id].quantity = q;
           syncCartFromSelected();
         } else {
@@ -159,7 +181,7 @@ function renderFullPicker() {
           <div class="item-name">${escapeHtml(i.name)}</div>
         </div>
         <div class="row" style="margin-top:6px;">
-          <input type="text" class="pick-qty" placeholder="Quantity, e.g. 2 or 1/4" />
+          ${quantityInputHtml(i, 'pick-qty', '')}
           <button type="button" class="small" data-action="add-item">Add</button>
         </div>
       </div>`
@@ -170,13 +192,17 @@ function renderFullPicker() {
     btn.addEventListener('click', (e) => {
       const card = e.target.closest('.card');
       const id = card.dataset.id;
+      const item = allItems.find((i) => i.id === id);
       const qtyInput = card.querySelector('.pick-qty');
-      const q = parseQuantity(qtyInput.value);
+      const q = parseQuantityForItem(item, qtyInput.value);
       if (!Number.isFinite(q) || q <= 0) {
         notice('Enter a valid quantity before adding.');
         return;
       }
-      const item = allItems.find((i) => i.id === id);
+      if (item.unit === '%' && q > 100) {
+        notice('Percentage can\'t be more than 100.');
+        return;
+      }
       selected[id] = { quantity: q, name: item.name, category: item.category, unit: item.unit || '' };
       syncCartFromSelected();
       clearNotice();
@@ -301,10 +327,15 @@ async function loadDonorInfo() {
 
 // ---------------- STEP 3 ----------------
 
+function idsWithGroup(key) {
+  return Object.keys(selected).filter((id) => fieldGroupsForCategory(selected[id].category).some((g) => g.key === key));
+}
+
 function fieldInputHtml(itemId, group, isFirst) {
   const val = details[itemId]?.[group.key] ?? '';
   const otherVal = group.otherKey ? details[itemId]?.[group.otherKey] ?? '' : '';
   const disabled = !isFirst && sameForAll[group.key] ? 'disabled' : '';
+  const minMax = group.type === 'date' ? `min="${group.min || ''}" max="${group.max || ''}"` : '';
 
   let inputHtml = '';
   if (group.type === 'radio') {
@@ -328,7 +359,7 @@ function fieldInputHtml(itemId, group, isFirst) {
           : ''
       }`;
   } else if (group.type === 'date') {
-    inputHtml = `<input type="date" data-field="${group.key}" value="${escapeHtml(val)}" ${disabled} />`;
+    inputHtml = `<input type="date" data-field="${group.key}" value="${escapeHtml(val)}" ${minMax} ${disabled} />`;
   } else if (group.type === 'textarea') {
     inputHtml = `<textarea data-field="${group.key}" rows="2" ${disabled}>${escapeHtml(val)}</textarea>`;
   } else {
@@ -338,7 +369,7 @@ function fieldInputHtml(itemId, group, isFirst) {
   const sameCheckbox = isFirst
     ? `<label class="checkbox-row" style="margin-top:4px;">
          <input type="checkbox" class="same-all-cb" data-field="${group.key}" ${sameForAll[group.key] ? 'checked' : ''} />
-         use this answer for every item
+         use this answer for every item this applies to
        </label>`
     : '';
 
@@ -357,21 +388,23 @@ function buildDetailSteps() {
     if (!details[id]) details[id] = {};
   });
 
-  // propagate any active "same for all" fields from the first item before rendering,
-  // so locked fields on other items show the copied value instead of appearing blank
+  // propagate any active "same for all" fields from the first applicable item before
+  // rendering, so locked fields on other items show the copied value instead of blank
   Object.keys(sameForAll).forEach((key) => {
     if (sameForAll[key]) propagateSameForAll(key);
   });
 
   container.innerHTML = ids
-    .map((id, idx) => {
+    .map((id) => {
       const s = selected[id];
+      const groups = fieldGroupsForCategory(s.category);
+      const groupsHtml = groups.length
+        ? groups.map((g) => fieldInputHtml(id, g, idsWithGroup(g.key)[0] === id)).join('')
+        : `<p class="intro" style="margin:0;">No additional details needed for this one — thank you!</p>`;
       return `
       <div class="card" data-item-id="${id}">
-        <div class="item-name">${escapeHtml(s.name)} <span style="color:var(--text-faint); font-weight:normal;">— ${formatQuantity(s.quantity)}</span></div>
-        <div class="detail-block">
-          ${FIELD_GROUPS.map((g) => fieldInputHtml(id, g, idx === 0)).join('')}
-        </div>
+        <div class="item-name">${escapeHtml(s.name)} <span style="color:var(--text-faint); font-weight:normal;">— ${formatQuantityDisplay(s.quantity, s.unit)}</span></div>
+        <div class="detail-block">${groupsHtml}</div>
       </div>`;
     })
     .join('');
@@ -381,31 +414,31 @@ function buildDetailSteps() {
 
 function wireDetailInputs() {
   const container = document.getElementById('detail-items');
-  const firstCard = container.querySelector('.card');
-  const firstId = firstCard?.dataset.itemId;
 
   container.querySelectorAll('.card').forEach((card) => {
     const itemId = card.dataset.itemId;
+    const groups = fieldGroupsForCategory(selected[itemId].category);
 
-    FIELD_GROUPS.forEach((g) => {
+    groups.forEach((g) => {
+      const firstIdForGroup = idsWithGroup(g.key)[0];
       if (g.type === 'radio') {
         card.querySelectorAll(`input[name="${g.key}-${itemId}"]`).forEach((r) => {
           r.addEventListener('change', () => {
             details[itemId][g.key] = r.value;
-            if (itemId === firstId && sameForAll[g.key]) propagateSameForAll(g.key);
+            if (itemId === firstIdForGroup && sameForAll[g.key]) propagateSameForAll(g.key);
           });
         });
       } else {
         const input = card.querySelector(`[data-field="${g.key}"]`);
         input?.addEventListener('input', () => {
           details[itemId][g.key] = input.value;
-          if (itemId === firstId && sameForAll[g.key]) propagateSameForAll(g.key);
+          if (itemId === firstIdForGroup && sameForAll[g.key]) propagateSameForAll(g.key);
         });
         if (g.otherKey) {
           const otherInput = card.querySelector(`[data-field="${g.otherKey}"]`);
           otherInput?.addEventListener('input', () => {
             details[itemId][g.otherKey] = otherInput.value;
-            if (itemId === firstId && sameForAll[g.key]) propagateSameForAll(g.key);
+            if (itemId === firstIdForGroup && sameForAll[g.key]) propagateSameForAll(g.key);
           });
         }
       }
@@ -421,15 +454,15 @@ function wireDetailInputs() {
 }
 
 function propagateSameForAll(fieldKey) {
-  const ids = Object.keys(selected);
+  const ids = idsWithGroup(fieldKey);
   if (ids.length < 2) return;
   const firstId = ids[0];
-  const group = FIELD_GROUPS.find((g) => g.key === fieldKey);
+  const group = ALL_FIELD_GROUPS.find((g) => g.key === fieldKey);
   const value = details[firstId]?.[fieldKey] ?? '';
-  const otherValue = group.otherKey ? details[firstId]?.[group.otherKey] ?? '' : '';
+  const otherValue = group?.otherKey ? details[firstId]?.[group.otherKey] ?? '' : '';
   ids.slice(1).forEach((id) => {
     details[id][fieldKey] = value;
-    if (group.otherKey) details[id][group.otherKey] = otherValue;
+    if (group?.otherKey) details[id][group.otherKey] = otherValue;
   });
 }
 
@@ -450,13 +483,15 @@ function buildReview() {
       const s = selected[id];
       const d = details[id] || {};
       const bits = [];
-      if (d.on_build_crew) bits.push(`Build crew: ${d.on_build_crew === 'true' ? 'Yes' : 'No'}`);
+      if (d.crew_location) bits.push(`Where: ${CREW_LOCATION_LABELS[d.crew_location] || d.crew_location}`);
+      if (d.arrival_date) bits.push(`Available from: ${d.arrival_date}`);
+      if (d.departure_date) bits.push(`Available until: ${d.departure_date}`);
       if (d.loan_or_donated) bits.push(d.loan_or_donated === 'loan' ? 'Loan' : 'Donated');
       if (d.pickup_method) bits.push(`Pickup: ${d.pickup_method}${d.pickup_method === 'Other' && d.pickup_method_other ? ' — ' + d.pickup_method_other : ''}`);
       if (d.pickup_timing) bits.push(`Timing: ${d.pickup_timing}${d.pickup_timing === 'Other' && d.pickup_timing_other ? ' — ' + d.pickup_timing_other : ''}`);
       return `
       <div class="card">
-        <div class="item-name">${escapeHtml(s.name)} — ${formatQuantity(s.quantity)}</div>
+        <div class="item-name">${escapeHtml(s.name)} — ${formatQuantityDisplay(s.quantity, s.unit)}</div>
         ${bits.length ? `<div class="item-desc">${escapeHtml(bits.join(' · '))}</div>` : ''}
       </div>`;
     })
@@ -479,10 +514,12 @@ document.getElementById('submit-btn').addEventListener('click', async () => {
 
     const items = Object.keys(selected).map((id) => {
       const d = details[id] || {};
+      const crewLoc = d.crew_location || '';
       return {
         item_id: id,
         quantity: selected[id].quantity,
-        on_build_crew: d.on_build_crew === '' ? null : d.on_build_crew,
+        on_build_crew: crewLoc === '' ? null : crewLoc === 'remote' ? false : true,
+        crew_location: crewLoc,
         arrival_date: d.arrival_date || '',
         departure_date: d.departure_date || '',
         loan_or_donated: d.loan_or_donated || '',

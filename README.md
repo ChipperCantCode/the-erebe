@@ -3,12 +3,16 @@
 A volunteer/material sign-up site for **The Erebe**, a temple build for YOUtopia 2026
 (San Diego regional Burning Man event). Built for Inani's crew.
 
-Live at: https://chippercantcode.github.io/the-erebe/ (once GitHub Pages is enabled)
+Live at: https://chippercantcode.github.io/the-erebe/
 
 ## Pages
 
-- `index.html` — public wish list. Everyone can browse volunteer roles and material
-  needs, see what's already covered, and see who to thank (or "Anonymous").
+- `index.html` — public wish list, in three sections: **Volunteers** (roles fill by
+  headcount or, for one-owner leadership roles like Project Manager, by percentage —
+  one person can take 0–100%, or several people can split it), **Materials & Supplies**
+  (quantity-based), and **Donations** ($, USD) for cash asks like sales tax or a general
+  build fund. Everyone can browse, see what's already covered, and see who to thank (or
+  "Anonymous").
 - `contribute.html` — the sign-up flow. Pick any number of items in any quantity
   (including fractions like `1/4`), create a simple account (chosen name + passcode,
   no email/password login), fill in per-item details, and submit.
@@ -47,10 +51,19 @@ python3 -m http.server 8000
 
 then open `http://localhost:8000/`.
 
-## Seed data
+## Seed data & targets
 
-The wish list was seeded directly from Inani's "Erebe Wish List" message: 13 volunteer
-roles and 18 material items. Quantities/targets are left open-ended (no fixed target)
-unless an admin sets one, since the original list didn't specify numeric targets for
-most things — an item only gets crossed off once an admin gives it a target and
-contributions meet it.
+The wish list was seeded from Inani's "Erebe Wish List" message and the YOUtopia grant
+budget spreadsheet. Target quantities come from three sources, and it's worth knowing
+which is which when something looks off:
+
+- **Hard numbers from the budget** (e.g. Plywood: 120 sheets = 40 floor + 60 wall + 20
+  spire slatting).
+- **Estimates derived from the 30-person crew assumption** (e.g. Gloves: 30 pairs, one
+  per crew member) — flagged as estimates in the item description.
+- **Open-ended** (no target) where neither the budget nor a crew-size assumption gives a
+  reasonable basis — these just show a running total, never "fully covered."
+
+Build crew signups (CoLab prefab shop vs. the event site, or both) record availability
+within the build window (Sept 16 – Oct 7, 2026, per Chipper) instead of a generic
+arrival/departure date.

@@ -1,4 +1,17 @@
-import { supabase, getAdminToken, setAdminToken, clearAdminToken, formatQuantity, escapeHtml, rpcErrorMessage } from './shared.js';
+import {
+  supabase,
+  getAdminToken,
+  setAdminToken,
+  clearAdminToken,
+  formatQuantity,
+  formatQuantityDisplay,
+  quantityInputHtml,
+  parseQuantityForItem,
+  escapeHtml,
+  rpcErrorMessage,
+  CREW_LOCATION_OPTIONS,
+  CREW_LOCATION_LABELS,
+} from './shared.js';
 
 const noticeArea = document.getElementById('notice-area');
 function notice(msg, kind = 'error') {
@@ -76,7 +89,7 @@ function renderChangeRequests() {
         <span class="pill ${r.status}">${r.status}</span>
       </div>
       <div class="item-desc">
-        Current: ${formatQuantity(r.current_quantity)} → Requested: ${r.requested_quantity == null ? 'remove entirely' : formatQuantity(r.requested_quantity)}
+        Current: ${formatQuantityDisplay(r.current_quantity, r.item_unit)} → Requested: ${r.requested_quantity == null ? 'remove entirely' : formatQuantityDisplay(r.requested_quantity, r.item_unit)}
         <br />Reason: ${escapeHtml(r.reason)}
         ${r.admin_note ? `<br />Admin note: ${escapeHtml(r.admin_note)}` : ''}
       </div>
@@ -123,10 +136,16 @@ async function resolveRequest(id, approve, card) {
 // ---------------- Donors ----------------
 
 function contributionRowHtml(donorId, c) {
+  const crewSelect =
+    c.item_category === 'volunteer'
+      ? `<select class="edit-crew-location" style="width:100%; margin-top:4px;">
+          ${CREW_LOCATION_OPTIONS.map(([val, label]) => `<option value="${val}" ${(c.crew_location || '') === val ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+        </select>`
+      : '';
   return `
   <tr data-cid="${c.id}">
     <td>${escapeHtml(c.item_name)}<br /><span class="pill">${escapeHtml(c.item_category)}</span></td>
-    <td><input type="text" class="edit-qty" value="${formatQuantity(c.quantity)}" style="width:80px;" /></td>
+    <td>${quantityInputHtml({ unit: c.item_unit }, 'edit-qty', c.quantity)}</td>
     <td>
       <select class="edit-status">
         <option value="active" ${c.status === 'active' ? 'selected' : ''}>active</option>
@@ -134,9 +153,13 @@ function contributionRowHtml(donorId, c) {
       </select>
     </td>
     <td style="font-size:0.8rem; color:var(--text-dim);">
+      ${c.crew_location ? `Where: ${escapeHtml(CREW_LOCATION_LABELS[c.crew_location] || c.crew_location)}<br/>` : ''}
+      ${c.arrival_date ? `From: ${escapeHtml(c.arrival_date)}<br/>` : ''}
+      ${c.departure_date ? `Until: ${escapeHtml(c.departure_date)}<br/>` : ''}
       ${c.loan_or_donated ? escapeHtml(c.loan_or_donated) + '<br/>' : ''}
       ${c.pickup_method ? escapeHtml(c.pickup_method) + '<br/>' : ''}
       ${c.pickup_location ? escapeHtml(c.pickup_location) : ''}
+      ${crewSelect}
     </td>
     <td>
       <button type="button" class="small" data-action="save-contrib">Save</button>
@@ -222,15 +245,22 @@ function renderDonors() {
       btn.addEventListener('click', async () => {
         const tr = btn.closest('tr');
         const cid = tr.dataset.cid;
-        const qty = Number(tr.querySelector('.edit-qty').value);
-        const status = tr.querySelector('.edit-status').value;
         const c = dash.donors.find((d) => d.id === donorId).contributions.find((x) => x.id === cid);
+        const qty = parseQuantityForItem({ unit: c.item_unit }, tr.querySelector('.edit-qty').value);
+        if (!Number.isFinite(qty) || qty <= 0) {
+          notice('Enter a valid quantity.');
+          return;
+        }
+        const status = tr.querySelector('.edit-status').value;
+        const crewLocationSelect = tr.querySelector('.edit-crew-location');
+        const crewLocation = crewLocationSelect ? crewLocationSelect.value || null : c.crew_location;
         const { error } = await supabase.rpc('admin_set_contribution', {
           p_session_token: token,
           p_id: cid,
           p_quantity: qty,
           p_status: status,
           p_on_build_crew: c.on_build_crew,
+          p_crew_location: crewLocation,
           p_arrival_date: c.arrival_date,
           p_departure_date: c.departure_date,
           p_loan_or_donated: c.loan_or_donated,
@@ -266,8 +296,9 @@ function renderDonors() {
     block.querySelector('[data-action="add-contrib"]')?.addEventListener('click', async () => {
       const select = block.querySelector('.add-item-select');
       const qtyInput = block.querySelector('.add-item-qty');
-      const qty = Number(qtyInput.value);
-      if (!qty || qty <= 0) {
+      const targetItem = dash.wishlist_items.find((i) => i.id === select.value);
+      const qty = parseQuantityForItem({ unit: targetItem?.unit }, qtyInput.value);
+      if (!Number.isFinite(qty) || qty <= 0) {
         notice('Enter a valid quantity.');
         return;
       }
@@ -297,13 +328,14 @@ function itemRowHtml(i) {
       <select class="w-category">
         <option value="volunteer" ${i.category === 'volunteer' ? 'selected' : ''}>volunteer</option>
         <option value="material" ${i.category === 'material' ? 'selected' : ''}>material</option>
+        <option value="donation" ${i.category === 'donation' ? 'selected' : ''}>donation</option>
       </select>
     </td>
     <td><textarea class="w-desc" rows="2" style="min-width:200px;">${escapeHtml(i.description || '')}</textarea></td>
-    <td><input type="number" class="w-target" value="${i.target_quantity ?? ''}" style="width:80px;" /></td>
-    <td><input type="text" class="w-unit" value="${escapeHtml(i.unit || '')}" style="width:80px;" /></td>
+    <td><input type="number" class="w-target" value="${i.target_quantity ?? ''}" style="width:80px;" step="any" /></td>
+    <td><input type="text" class="w-unit" value="${escapeHtml(i.unit || '')}" style="width:80px;" placeholder="%, USD, etc." /></td>
     <td><input type="number" class="w-sort" value="${i.sort_order}" style="width:60px;" /></td>
-    <td style="font-size:0.8rem;">committed: ${formatQuantity(i.committed_quantity)}</td>
+    <td style="font-size:0.8rem;">committed: ${formatQuantityDisplay(i.committed_quantity, i.unit)}</td>
     <td>
       <label class="checkbox-row"><input type="checkbox" class="w-archived" ${i.archived ? 'checked' : ''} /> archived</label>
     </td>
@@ -323,6 +355,7 @@ function renderWishlist() {
           <select id="new-item-category">
             <option value="volunteer">volunteer</option>
             <option value="material">material</option>
+            <option value="donation">donation</option>
           </select>
         </div>
         <textarea id="new-item-desc" placeholder="Description" rows="2" style="margin-top:8px;"></textarea>
