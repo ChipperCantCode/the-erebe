@@ -24,6 +24,7 @@ function clearNotice() {
 let token = getAdminToken();
 let dash = { wishlist_items: [], donors: [], change_requests: [] };
 let homepage = { hero_tagline: '', hero_subtagline: '', cta_text: '', sections: [] };
+let feedbackRequests = [];
 
 const loginBox = document.getElementById('login-box');
 const dashboard = document.getElementById('dashboard');
@@ -59,12 +60,13 @@ document.querySelectorAll('.tabs [data-tab]').forEach((btn) => {
 
 async function loadDashboard() {
   clearNotice();
-  const [{ data, error }, { data: hpData, error: hpError }] = await Promise.all([
+  const [{ data, error }, { data: hpData, error: hpError }, { data: fbData, error: fbError }] = await Promise.all([
     supabase.rpc('admin_get_dashboard', { p_session_token: token }),
     supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
+    supabase.rpc('admin_get_feedback_requests', { p_session_token: token }),
   ]);
-  if (error || hpError) {
-    notice(rpcErrorMessage(error || hpError));
+  if (error || hpError || fbError) {
+    notice(rpcErrorMessage(error || hpError || fbError));
     clearAdminToken();
     token = '';
     loginBox.classList.remove('hidden');
@@ -73,12 +75,14 @@ async function loadDashboard() {
   }
   dash = data;
   homepage = hpData;
+  feedbackRequests = fbData || [];
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
   renderChangeRequests();
   renderDonors();
   renderWishlist();
   renderHomepage();
+  renderFeedback();
 }
 
 // ---------------- Change requests ----------------
@@ -675,6 +679,82 @@ function renderHomepage() {
       return;
     }
     await loadDashboard();
+  });
+}
+
+// ---------------- Feedback / issue requests ----------------
+
+function feedbackRowHtml(f) {
+  const statusPill =
+    f.status === 'created'
+      ? `<span class="pill approved">opened as issue #${f.github_issue_number}</span>`
+      : f.status === 'failed'
+      ? `<span class="pill denied">failed to publish</span>`
+      : `<span class="pill pending">publishing…</span>`;
+  return `
+  <div class="card">
+    <div class="item-head">
+      <div class="item-name">${escapeHtml(f.title)}</div>
+      ${statusPill}
+    </div>
+    ${f.body ? `<div class="item-desc">${escapeHtml(f.body)}</div>` : ''}
+    ${f.github_issue_url ? `<p style="margin:6px 0 0;"><a href="${escapeHtml(f.github_issue_url)}" target="_blank" rel="noopener noreferrer">View on GitHub →</a></p>` : ''}
+    ${f.status === 'failed' && f.error_message ? `<p style="margin:6px 0 0; font-size:0.8rem; color:var(--bad);">${escapeHtml(f.error_message)}</p>` : ''}
+    <p style="margin:6px 0 0; font-size:0.78rem; color:var(--text-faint);">${new Date(f.created_at).toLocaleString()}</p>
+  </div>`;
+}
+
+function renderFeedback() {
+  const el = document.getElementById('tab-feedback');
+  el.innerHTML = `
+    <h2 class="section-title" style="margin-top:0;">Feedback &amp; Feature Requests</h2>
+    <p class="intro">
+      Found a bug, or want something changed or added? Submitting here opens a GitHub issue on
+      the site's repository automatically — Chipper gets notified right away.
+    </p>
+    <div class="card">
+      <div class="field-group">
+        <label class="field">Title</label>
+        <input type="text" id="fb-title" placeholder="Short summary" />
+      </div>
+      <div class="field-group">
+        <label class="field">Details (optional)</label>
+        <textarea id="fb-body" rows="4" placeholder="What's happening, or what you'd like to see"></textarea>
+      </div>
+      <button type="button" id="fb-submit-btn">Submit</button>
+    </div>
+
+    <h3 style="color:var(--accent); margin: 24px 0 10px;">Past submissions (${feedbackRequests.length})</h3>
+    ${feedbackRequests.map(feedbackRowHtml).join('') || '<p class="intro">Nothing submitted yet.</p>'}`;
+
+  document.getElementById('fb-submit-btn').addEventListener('click', async () => {
+    const title = document.getElementById('fb-title').value.trim();
+    const body = document.getElementById('fb-body').value.trim();
+    if (!title) {
+      notice('Give it a short title before submitting.');
+      return;
+    }
+    const btn = document.getElementById('fb-submit-btn');
+    btn.disabled = true;
+    try {
+      const { data, error } = await supabase.functions.invoke('submit-feedback', {
+        body: { session_token: token, title, body },
+      });
+      if (error) {
+        notice('Could not submit: ' + error.message);
+        return;
+      }
+      if (data?.error) {
+        notice('Logged, but publishing to GitHub failed: ' + data.error + '. Ask Chipper to check the integration.');
+      } else {
+        notice('Submitted — opened as GitHub issue #' + data.issue_number + '.', 'success');
+      }
+      await loadDashboard();
+      document.getElementById('fb-title').value = '';
+      document.getElementById('fb-body').value = '';
+    } finally {
+      btn.disabled = false;
+    }
   });
 }
 

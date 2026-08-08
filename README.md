@@ -3,7 +3,8 @@
 A project site for **The Erebe**, a temple build for YOUtopia 2026 (San Diego regional
 Burning Man event) — plus a volunteer/material/donation sign-up system for Inani's crew.
 
-Live at: https://chippercantcode.github.io/the-erebe/
+Live at: https://erebe.art (custom domain via GoDaddy DNS -> GitHub Pages; also reachable
+at https://chippercantcode.github.io/the-erebe/)
 
 ## Pages
 
@@ -32,7 +33,10 @@ Live at: https://chippercantcode.github.io/the-erebe/
   tagline/subtagline, the "Participate" pitch text, and a reorderable list of rich-text
   content sections (bold, headings, bulleted/numbered lists, links), via a small
   toolbar over a `contenteditable` box. No code changes needed for Inani to update the
-  front page himself.
+  front page himself. Under **Feedback**, anyone with admin access can submit a bug
+  report or feature request; it's logged and published as a GitHub issue on this repo
+  automatically, so Chipper gets a normal GitHub notification without any of this
+  needing to run back through a Claude conversation.
 
 ## How it works
 
@@ -68,6 +72,25 @@ client-side on `body_html` before it's ever set via `innerHTML` on a page a regu
 visitor loads (writes only happen through the admin-passcode-gated RPCs, but that's an
 access boundary, not a content one — sanitizing at render time is what actually stops
 a stray `<script>` from running in a visitor's browser).
+
+## Feedback -> GitHub issues
+
+The Feedback tab in Admin calls a Supabase Edge Function (`supabase/functions/submit-
+feedback`) rather than a Postgres RPC, since Postgres functions can't make outbound
+HTTP calls. The function verifies the caller has a valid admin session (checked
+server-side against `admin_sessions`, mirroring `check_admin_session()`), logs the
+submission to `feedback_requests`, then opens a GitHub issue via the REST API using a
+token read from `integration_secrets` — a table locked down the same way as everything
+else here (RLS, no policies, so it's unreachable via the public API; only the edge
+function's service-role key or direct SQL can read it). That table stands in for a real
+Supabase secret because there's no MCP tool available in this environment to set one —
+if you ever manage this project with the Supabase CLI, moving `github_issues_token`
+into `supabase secrets set` and reading it via `Deno.env.get` instead would be the
+proper version of this.
+
+The GitHub token needs exactly one permission: **Issues: Read and write**, scoped to
+only this repository (a fine-grained PAT, not a classic one) — nothing else it can
+reach or do.
 
 ## Running it
 
