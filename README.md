@@ -1,13 +1,17 @@
-# The Erebe — Wish List & Sign-Up
+# The Erebe
 
-A volunteer/material sign-up site for **The Erebe**, a temple build for YOUtopia 2026
-(San Diego regional Burning Man event). Built for Inani's crew.
+A project site for **The Erebe**, a temple build for YOUtopia 2026 (San Diego regional
+Burning Man event) — plus a volunteer/material/donation sign-up system for Inani's crew.
 
 Live at: https://chippercantcode.github.io/the-erebe/
 
 ## Pages
 
-- `index.html` — public wish list, in three sections: **Volunteers** (roles fill by
+- `index.html` — the public landing page. What the Erebe is, who's building it, and why
+  — a hero reveal of the elevation drawing (bottom-up clip-path animation, fading into
+  the title), then a short project description and a "Participate →" call to action.
+  No sign-up mechanics live here on purpose; that's all one click away.
+- `participate.html` — the wish list, in three sections: **Volunteers** (roles fill by
   headcount or, for one-owner leadership roles like Project Manager, by percentage —
   one person can take 0–100%, or several people can split it), **Materials & Supplies**
   (quantity-based), and **Donations** ($, USD) for cash asks like sales tax or a general
@@ -42,6 +46,10 @@ to be public — it can't do anything except call the whitelisted RPC functions.
 The schema/functions/seed data live in `supabase/migrations/` in this repo, applied to
 the `erebe-wishlist` Supabase project — that's the source of truth if the project ever
 needs to be recreated.
+
+`assets/elevation-view-white.png` is Inani's elevation drawing from the Drive folder,
+inverted to white-on-transparent so it glows against the dark background — that's what
+`index.html`'s hero reveal animates in.
 
 ## Running it
 
