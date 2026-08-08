@@ -320,23 +320,48 @@ footer.foot a { color: var(--text-faint); }
 .hero {
   text-align: center;
   padding: 36px 0 12px;
+  overflow-x: hidden; /* the art briefly scales up past its own box before settling */
 }
-.hero-art {
+
+/* Sized to the source PNG's aspect ratio so the wrapper holds its shape before the
+   image finishes loading. Slightly oversized + shifted down at rest; settles to its
+   true size/position once the spires finish drawing (see erebe-settle below). */
+.hero-art-wrap {
+  position: relative;
   max-width: 380px;
   width: 80%;
   margin: 0 auto;
-  display: block;
+  aspect-ratio: 752 / 1360;
   filter: drop-shadow(0 0 18px rgba(201, 138, 58, 0.28));
-  clip-path: inset(100% 0 0 0);
-  animation: erebe-rise 2.8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  transform: scale(1.35) translateY(14px);
+  transform-origin: top center;
+  animation: erebe-settle 1.05s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation-delay: 1.35s;
 }
-@keyframes erebe-rise {
-  to { clip-path: inset(0 0 0 0); }
+@keyframes erebe-settle {
+  to { transform: scale(1) translateY(-8px); }
 }
+
+/* 7 stacked copies of the same artwork, each clipped to one vertical slice (--l/--r,
+   set inline per element) so it looks like each spire rises on its own, rather than
+   one uniform wipe across the whole image. Each slice still reveals bottom-up. */
+.hero-art-slice {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  clip-path: inset(100% var(--r) 0 var(--l));
+  animation: erebe-spire-rise 1.05s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+@keyframes erebe-spire-rise {
+  to { clip-path: inset(0 var(--r) 0 var(--l)); }
+}
+
 .hero-text {
   opacity: 0;
-  animation: erebe-fade-in 1.6s ease forwards;
-  animation-delay: 2.3s;
+  animation: erebe-fade-in 1.3s ease forwards;
+  animation-delay: 1.95s;
 }
 @keyframes erebe-fade-in {
   to { opacity: 1; }
@@ -359,7 +384,8 @@ footer.foot a { color: var(--text-faint); }
   margin: 0;
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-art { clip-path: inset(0 0 0 0); animation: none; }
+  .hero-art-wrap { transform: none; animation: none; }
+  .hero-art-slice { clip-path: inset(0 var(--r) 0 var(--l)); animation: none; }
   .hero-text { opacity: 1; animation: none; }
 }
 
