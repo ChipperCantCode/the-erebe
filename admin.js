@@ -738,17 +738,23 @@ function renderFeedback() {
     btn.disabled = true;
     try {
       const { data, error } = await supabase.functions.invoke('submit-feedback', {
-        body: { session_token: token, title, body },
+        body: { title, body },
       });
       if (error) {
-        notice('Could not submit: ' + error.message);
+        let payload = null;
+        try {
+          payload = await error.context.json();
+        } catch {
+          // ignore — fall through to the generic message below
+        }
+        notice(
+          payload?.error
+            ? 'Logged, but publishing to GitHub failed: ' + payload.error + '. Check the integration_secrets token.'
+            : 'Could not submit: ' + error.message
+        );
         return;
       }
-      if (data?.error) {
-        notice('Logged, but publishing to GitHub failed: ' + data.error + '. Ask Chipper to check the integration.');
-      } else {
-        notice('Submitted — opened as GitHub issue #' + data.issue_number + '.', 'success');
-      }
+      notice('Submitted — opened as GitHub issue #' + data.issue_number + '.', 'success');
       await loadDashboard();
       document.getElementById('fb-title').value = '';
       document.getElementById('fb-body').value = '';

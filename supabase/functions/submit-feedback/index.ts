@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const GITHUB_REPO_OWNER = "chippercantcode";
 const GITHUB_REPO_NAME = "the-erebe";
+const MAX_SUBMISSIONS_PER_HOUR = 5;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -16,30 +17,48 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Public endpoint (no login required, by design — anyone visiting the site can leave
+// feedback). The only real defense against abuse is a light per-IP rate limit; worst
+// case of it being open is a spammy GitHub issue, which is easy to close.
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    const { session_token, title, body } = await req.json();
-    if (!session_token || typeof title !== "string" || !title.trim()) {
-      return json({ error: "session_token and title are required" }, 400);
+    const { title, body, submitter_name } = await req.json();
+    if (typeof title !== "string" || !title.trim()) {
+      return json({ error: "title is required" }, 400);
     }
+
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // mirrors check_admin_session() in Postgres, done here in JS since this function
-    // runs with the service role key (bypasses RLS) rather than as a DB function
-    const { data: session } = await supabase
-      .from("admin_sessions")
-      .select("token")
-      .eq("token", session_token)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-    if (!session) {
-      return json({ error: "invalid_admin_session" }, 401);
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("feedback_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("submitter_ip", ip)
+      .gte("created_at", oneHourAgo);
+    if ((count ?? 0) >= MAX_SUBMISSIONS_PER_HOUR) {
+      return json({ error: "rate_limited", detail: "Too many submissions recently — try again in a bit." }, 429);
+    }
+
+    const { data: row, error: insertError } = await supabase
+      .from("feedback_requests")
+      .insert({
+        title: title.trim().slice(0, 300),
+        body: (body || "").slice(0, 5000) || null,
+        submitter_name: (submitter_name || "").trim().slice(0, 200) || null,
+        submitter_ip: ip,
+        status: "pending",
+      })
+      .select()
+      .single();
+    if (insertError || !row) {
+      return json({ error: "failed_to_log_request", detail: insertError?.message }, 500);
     }
 
     const { data: secretRow } = await supabase
@@ -49,15 +68,6 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     const githubToken = secretRow?.value;
 
-    const { data: row, error: insertError } = await supabase
-      .from("feedback_requests")
-      .insert({ title: title.trim(), body: body || null, status: "pending" })
-      .select()
-      .single();
-    if (insertError || !row) {
-      return json({ error: "failed_to_log_request", detail: insertError?.message }, 500);
-    }
-
     if (!githubToken) {
       await supabase
         .from("feedback_requests")
@@ -66,6 +76,11 @@ Deno.serve(async (req: Request) => {
       return json({ error: "github_token_not_configured", logged: true }, 500);
     }
 
+    const issueBodyParts = [];
+    if (row.submitter_name) issueBodyParts.push(`Submitted by: ${row.submitter_name}`);
+    if (row.body) issueBodyParts.push(row.body);
+    issueBodyParts.push("---\n_Submitted via the Erebe feedback form._");
+
     const ghRes = await fetch(
       `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/issues`,
       {
@@ -73,12 +88,12 @@ Deno.serve(async (req: Request) => {
         headers: {
           Authorization: `Bearer ${githubToken}`,
           Accept: "application/vnd.github+json",
-          "User-Agent": "erebe-admin-feedback",
+          "User-Agent": "erebe-feedback-form",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: title.trim(),
-          body: (body || "") + "\n\n---\n_Submitted via the Erebe admin console._",
+          title: row.title,
+          body: issueBodyParts.join("\n\n"),
         }),
       }
     );

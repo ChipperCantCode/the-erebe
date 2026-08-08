@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Feedback — The Erebe</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Feedback</h1>
+      <p>The Erebe — YOUtopia 2026</p>
+    </div>
+    <nav class="top-links">
+      <a href="index.html">← The Erebe</a>
+    </nav>
+  </header>
+
+  <p class="intro">
+    Found a bug on the site, or have an idea for something it should do? Let us know below —
+    this opens as an issue on the project's GitHub straight away, so it won't get lost.
+  </p>
+
+  <div id="notice-area"></div>
+
+  <div id="feedback-form" class="card">
+    <div class="field-group">
+      <label class="field">Your name (optional)</label>
+      <input type="text" id="fb-name" placeholder="So we know who to thank / follow up with" />
+    </div>
+    <div class="field-group">
+      <label class="field">Title</label>
+      <input type="text" id="fb-title" placeholder="Short summary" />
+    </div>
+    <div class="field-group">
+      <label class="field">Details (optional)</label>
+      <textarea id="fb-body" rows="5" placeholder="What's happening, or what you'd like to see"></textarea>
+    </div>
+    <button type="button" id="fb-submit-btn">Submit</button>
+  </div>
+
+  <footer class="foot">
+    <a href="index.html">The Erebe</a> · <a href="participate.html">Participate</a> · <a href="my-list.html">My List</a>
+  </footer>
+</div>
+
+<script type="module" src="feedback.js"></script>
+</body>
+</html>

@@ -33,10 +33,12 @@ at https://chippercantcode.github.io/the-erebe/)
   tagline/subtagline, the "Participate" pitch text, and a reorderable list of rich-text
   content sections (bold, headings, bulleted/numbered lists, links), via a small
   toolbar over a `contenteditable` box. No code changes needed for Inani to update the
-  front page himself. Under **Feedback**, anyone with admin access can submit a bug
-  report or feature request; it's logged and published as a GitHub issue on this repo
-  automatically, so Chipper gets a normal GitHub notification without any of this
-  needing to run back through a Claude conversation.
+  front page himself. The **Feedback** tab shows the history of everything submitted
+  through the public feedback form (see below) and can also submit directly.
+- `feedback.html` — public, no login needed. Anyone can leave a bug report or feature
+  request; it's published as a GitHub issue on this repo automatically, so Chipper gets
+  a normal GitHub notification without any of this needing to run back through a
+  Claude conversation. Linked from the footer of every page.
 
 ## How it works
 
@@ -75,18 +77,23 @@ a stray `<script>` from running in a visitor's browser).
 
 ## Feedback -> GitHub issues
 
-The Feedback tab in Admin calls a Supabase Edge Function (`supabase/functions/submit-
-feedback`) rather than a Postgres RPC, since Postgres functions can't make outbound
-HTTP calls. The function verifies the caller has a valid admin session (checked
-server-side against `admin_sessions`, mirroring `check_admin_session()`), logs the
-submission to `feedback_requests`, then opens a GitHub issue via the REST API using a
-token read from `integration_secrets` — a table locked down the same way as everything
-else here (RLS, no policies, so it's unreachable via the public API; only the edge
-function's service-role key or direct SQL can read it). That table stands in for a real
-Supabase secret because there's no MCP tool available in this environment to set one —
-if you ever manage this project with the Supabase CLI, moving `github_issues_token`
-into `supabase secrets set` and reading it via `Deno.env.get` instead would be the
-proper version of this.
+`feedback.html` and the admin Feedback tab both call a Supabase Edge Function
+(`supabase/functions/submit-feedback`) rather than a Postgres RPC, since Postgres
+functions can't make outbound HTTP calls. It's a deliberately public, unauthenticated
+endpoint — anyone visiting the site can leave feedback without logging in — so the only
+defense against abuse is a light per-IP rate limit (5/hour, tracked via a
+`submitter_ip` column). Worst case of it being open is a spammy GitHub issue, which
+costs nothing to close; that tradeoff seemed better than gating basic feedback behind
+the shared admin passcode.
+
+The function logs every submission to `feedback_requests`, then opens a GitHub issue
+via the REST API using a token read from `integration_secrets` — a table locked down
+the same way as everything else here (RLS, no policies, so it's unreachable via the
+public API; only the edge function's service-role key or direct SQL can read it). That
+table stands in for a real Supabase secret because there's no MCP tool available in
+this environment to set one — if you ever manage this project with the Supabase CLI,
+moving `github_issues_token` into `supabase secrets set` and reading it via
+`Deno.env.get` instead would be the proper version of this.
 
 The GitHub token needs exactly one permission: **Issues: Read and write**, scoped to
 only this repository (a fine-grained PAT, not a classic one) — nothing else it can
