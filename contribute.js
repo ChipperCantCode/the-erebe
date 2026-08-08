@@ -16,7 +16,10 @@ import {
   BUILD_START_DATE,
   BUILD_END_DATE,
   BUILD_WINDOW_LABEL,
+  renderAccountStatus,
 } from './shared.js';
+
+renderAccountStatus(document.getElementById('account-status'));
 
 const noticeArea = document.getElementById('notice-area');
 function notice(msg, kind = 'error') {

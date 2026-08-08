@@ -72,6 +72,22 @@ nav.top-links a {
 }
 nav.top-links a:hover { color: var(--accent); border-color: var(--accent-2); }
 
+#account-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  font-size: 0.85rem;
+  margin: -12px 0 20px;
+}
+.account-pill {
+  color: var(--good);
+  background: rgba(111,168,120,0.08);
+  border: 1px solid rgba(111,168,120,0.25);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
 h2.section-title {
   color: var(--accent);
   font-size: 1.2rem;

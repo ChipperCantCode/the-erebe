@@ -200,6 +200,7 @@ function donorBlockHtml(d) {
       <p style="font-size:0.85rem; color:var(--text-dim);">
         Email: ${escapeHtml(d.email)} ${d.is_anonymous ? '· anonymous on public list' : ''}
       </p>
+      <button type="button" class="secondary small" data-action="reset-passcode">Reset passcode</button>
       ${d.contributions.map((c) => contributionRowHtml(d.id, c)).join('') || '<p class="intro">No contributions.</p>'}
       <details style="margin-top:10px;">
         <summary style="cursor:pointer; color:var(--accent); font-size:0.85rem;">+ Add an item for this donor</summary>
@@ -259,6 +260,20 @@ function renderDonors() {
 
   el.querySelectorAll('.donor-block').forEach((block) => {
     const donorId = block.dataset.donorId;
+
+    block.querySelector('[data-action="reset-passcode"]')?.addEventListener('click', async () => {
+      const donor = dash.donors.find((d) => d.id === donorId);
+      if (!confirm(`Reset the passcode for ${donor.chosen_name}? Their old passcode will stop working immediately.`)) return;
+      const { data: newPasscode, error } = await supabase.rpc('admin_reset_donor_passcode', {
+        p_session_token: token,
+        p_donor_id: donorId,
+      });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      alert(`New passcode for ${donor.chosen_name}: ${newPasscode}\n\nShare this with them directly — it won't be shown again.`);
+    });
 
     block.querySelectorAll('[data-action="save-contrib"]').forEach((btn) => {
       btn.addEventListener('click', async () => {

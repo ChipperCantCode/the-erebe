@@ -1,4 +1,6 @@
-import { supabase, sanitizeRichText, escapeHtml } from './shared.js';
+import { supabase, sanitizeRichText, escapeHtml, renderAccountStatus } from './shared.js';
+
+renderAccountStatus(document.getElementById('account-status'));
 
 // The static markup already in index.html is a real fallback (and what Inani edits
 // via Admin -> Homepage Copy starts from it) — this just upgrades it live once the

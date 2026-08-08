@@ -24,17 +24,21 @@ at https://chippercantcode.github.io/the-erebe/)
 - `my-list.html` — a donor's own dashboard. Log in with chosen name + passcode to see
   everything you've signed up for, update contact info, or request a change (reduce a
   quantity or remove an item — always with a reason, and always held for review rather
-  than applied instantly, since Inani may already be counting on it).
+  than applied instantly, since Inani may already be counting on it). There's no
+  self-service password reset (no email-sending infra, and a real reset flow would
+  work against the whole point of avoiding a real auth system) — if a donor forgets
+  their passcode, an admin resets it for them from the Donors tab and relays the new
+  one directly.
 - `admin.html` — shared admin view for Inani and the lead artist. Login is name `admin`,
   passcode `5555` (fixed, per the original request). Approve/deny donor change requests,
-  edit any donor's contributions, edit the master wish list (add items, set target
-  quantities/units so items can be "fully covered," archive items), and — under
-  **Homepage Copy** — edit everything on the public landing page: the hero
-  tagline/subtagline, the "Participate" pitch text, and a reorderable list of rich-text
-  content sections (bold, headings, bulleted/numbered lists, links), via a small
-  toolbar over a `contenteditable` box. No code changes needed for Inani to update the
-  front page himself. The **Feedback** tab shows the history of everything submitted
-  through the public feedback form (see below) and can also submit directly.
+  edit any donor's contributions, reset a donor's passcode, edit the master wish list
+  (add items, set target quantities/units so items can be "fully covered," archive
+  items), and — under **Homepage Copy** — edit everything on the public landing page:
+  the hero tagline/subtagline, the "Participate" pitch text, and a reorderable list of
+  rich-text content sections (bold, headings, bulleted/numbered lists, links), via a
+  small toolbar over a `contenteditable` box. No code changes needed for Inani to
+  update the front page himself. The **Feedback** tab shows the history of everything
+  submitted through the public feedback form (see below) and can also submit directly.
 - `feedback.html` — public, no login needed. Anyone can leave a bug report or feature
   request; it's published as a GitHub issue on this repo automatically, so Chipper gets
   a normal GitHub notification without any of this needing to run back through a

@@ -7,7 +7,10 @@ import {
   quantityInputHtml,
   parseQuantityForItem,
   escapeHtml,
+  renderAccountStatus,
 } from './shared.js';
+
+renderAccountStatus(document.getElementById('account-status'));
 
 const noticeArea = document.getElementById('notice-area');
 const volunteerList = document.getElementById('volunteer-list');

@@ -32,6 +32,33 @@ export function clearAdminToken() {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
 }
 
+// ---------- shared "signed in as X · Log out" header widget ----------
+// Donor sessions carry across index/participate/contribute (same localStorage token),
+// but only my-list.html showed who you were signed in as or offered a way to log out.
+// Call this on any page with a #account-status element to fix that.
+export async function renderAccountStatus(containerEl) {
+  const token = getDonorToken();
+  if (!token || !containerEl) return;
+
+  const { data, error } = await supabase.rpc('get_my_donor_info', { p_session_token: token });
+  if (error) {
+    clearDonorToken();
+    return;
+  }
+  const info = Array.isArray(data) ? data[0] : data;
+  if (!info) return;
+
+  containerEl.innerHTML = `
+    <span class="account-pill">Signed in as ${escapeHtml(info.chosen_name)}</span>
+    <button type="button" class="secondary small" id="account-logout-btn">Log out</button>`;
+  containerEl.classList.remove('hidden');
+
+  document.getElementById('account-logout-btn').addEventListener('click', () => {
+    clearDonorToken();
+    location.reload();
+  });
+}
+
 // ---------- draft cart (survives reloads, cleared on submit) ----------
 const CART_KEY = 'erebe_cart_v1';
 
