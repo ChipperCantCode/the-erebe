@@ -382,3 +382,30 @@ footer.foot a { color: var(--text-faint); }
 }
 .cta-block p { color: var(--text-dim); margin: 0 0 16px; }
 .cta-block .btn { font-size: 1rem; padding: 12px 26px; }
+
+/* ---------- rich text editor (admin homepage copy) ---------- */
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.rte-toolbar button {
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  min-width: 34px;
+}
+.rte-editable {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  min-height: 90px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.rte-editable:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.rte-editable p { margin: 0 0 10px; }
+.rte-editable h1, .rte-editable h2, .rte-editable h3 { color: var(--accent); margin: 10px 0; }
+.rte-editable ul, .rte-editable ol { margin: 0 0 10px; padding-left: 22px; }
+.rte-editable a { color: var(--link); }

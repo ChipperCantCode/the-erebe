@@ -137,6 +137,59 @@ export const CREW_LOCATION_LABELS = {
   both: 'Both CoLab and event site',
 };
 
+// ---------- rich text: strict allowlist sanitizer for admin-authored homepage copy ----------
+// This is the actual security boundary for the homepage-content editor: body_html is
+// stored as-is (writes only happen through the admin-passcode-gated RPCs), but nothing
+// gets set via innerHTML on a page a regular visitor loads until it's passed through
+// this. Strips any tag/attribute not explicitly allowed, including inline event
+// handlers, <script>/<style>/<iframe>, and non-http(s)/mailto link targets.
+const RICH_TEXT_ALLOWED_TAGS = new Set([
+  'P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'A', 'SPAN', 'DIV', 'BLOCKQUOTE',
+]);
+const RICH_TEXT_ALLOWED_ATTRS = { A: ['href'] };
+// these carry non-visible content (code/CSS) — drop them entirely rather than
+// unwrapping to text, or their "content" would leak onto the page as garbage text
+const RICH_TEXT_STRIP_ENTIRELY = new Set(['SCRIPT', 'STYLE']);
+
+export function sanitizeRichText(html) {
+  const template = document.createElement('template');
+  template.innerHTML = html || '';
+
+  function clean(node) {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        if (RICH_TEXT_STRIP_ENTIRELY.has(child.tagName)) {
+          child.remove();
+          return;
+        }
+        if (!RICH_TEXT_ALLOWED_TAGS.has(child.tagName)) {
+          child.replaceWith(document.createTextNode(child.textContent || ''));
+          return;
+        }
+        const allowedAttrs = RICH_TEXT_ALLOWED_ATTRS[child.tagName] || [];
+        [...child.attributes].forEach((attr) => {
+          if (!allowedAttrs.includes(attr.name)) child.removeAttribute(attr.name);
+        });
+        if (child.tagName === 'A') {
+          const href = child.getAttribute('href') || '';
+          if (!/^https?:\/\//i.test(href) && !/^mailto:/i.test(href)) {
+            child.removeAttribute('href');
+          } else {
+            child.setAttribute('target', '_blank');
+            child.setAttribute('rel', 'noopener noreferrer');
+          }
+        }
+        clean(child);
+      } else if (child.nodeType !== Node.TEXT_NODE) {
+        child.remove();
+      }
+    });
+  }
+
+  clean(template.content);
+  return template.innerHTML;
+}
+
 // ---------- misc ----------
 export function escapeHtml(str) {
   if (str == null) return '';

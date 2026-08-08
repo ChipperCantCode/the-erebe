@@ -7,6 +7,7 @@ import {
   quantityInputHtml,
   parseQuantityForItem,
   escapeHtml,
+  sanitizeRichText,
   rpcErrorMessage,
   CREW_LOCATION_OPTIONS,
   CREW_LOCATION_LABELS,
@@ -22,6 +23,7 @@ function clearNotice() {
 
 let token = getAdminToken();
 let dash = { wishlist_items: [], donors: [], change_requests: [] };
+let homepage = { hero_tagline: '', hero_subtagline: '', cta_text: '', sections: [] };
 
 const loginBox = document.getElementById('login-box');
 const dashboard = document.getElementById('dashboard');
@@ -57,9 +59,12 @@ document.querySelectorAll('.tabs [data-tab]').forEach((btn) => {
 
 async function loadDashboard() {
   clearNotice();
-  const { data, error } = await supabase.rpc('admin_get_dashboard', { p_session_token: token });
-  if (error) {
-    notice(rpcErrorMessage(error));
+  const [{ data, error }, { data: hpData, error: hpError }] = await Promise.all([
+    supabase.rpc('admin_get_dashboard', { p_session_token: token }),
+    supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
+  ]);
+  if (error || hpError) {
+    notice(rpcErrorMessage(error || hpError));
     clearAdminToken();
     token = '';
     loginBox.classList.remove('hidden');
@@ -67,11 +72,13 @@ async function loadDashboard() {
     return;
   }
   dash = data;
+  homepage = hpData;
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
   renderChangeRequests();
   renderDonors();
   renderWishlist();
+  renderHomepage();
 }
 
 // ---------------- Change requests ----------------
@@ -485,6 +492,189 @@ function renderWishlist() {
       }
       await loadDashboard();
     });
+  });
+}
+
+// ---------------- Homepage copy ----------------
+
+function richTextEditorHtml(bodyHtml) {
+  return `
+    <div class="rte">
+      <div class="rte-toolbar">
+        <button type="button" class="secondary" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button type="button" class="secondary" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button type="button" class="secondary" data-cmd="formatBlock" data-value="H2" title="Heading">H2</button>
+        <button type="button" class="secondary" data-cmd="formatBlock" data-value="P" title="Paragraph">¶</button>
+        <button type="button" class="secondary" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
+        <button type="button" class="secondary" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+        <button type="button" class="secondary" data-cmd="createLink" title="Add link">Link</button>
+        <button type="button" class="secondary" data-cmd="unlink" title="Remove link">Unlink</button>
+        <button type="button" class="secondary" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+      </div>
+      <div class="rte-editable" contenteditable="true">${bodyHtml || ''}</div>
+    </div>`;
+}
+
+function wireRichTextEditor(container) {
+  const editable = container.querySelector('.rte-editable');
+  container.querySelectorAll('.rte-toolbar [data-cmd]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      editable.focus();
+      const cmd = btn.dataset.cmd;
+      if (cmd === 'createLink') {
+        const url = prompt('Link URL (https://... or mailto:...)');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+      } else {
+        document.execCommand(cmd, false, btn.dataset.value || null);
+      }
+    });
+  });
+}
+
+function homepageSectionHtml(s) {
+  return `
+  <div class="card" data-id="${s.id}">
+    <div class="field-group">
+      <label class="field">Section heading</label>
+      <input type="text" class="hp-heading" value="${escapeHtml(s.heading || '')}" />
+    </div>
+    <label class="field">Body</label>
+    ${richTextEditorHtml(s.body_html)}
+    <div class="row" style="margin-top:10px;">
+      <div class="field-group">
+        <label class="field">Sort order</label>
+        <input type="number" class="hp-sort" value="${s.sort_order}" />
+      </div>
+      <div class="field-group" style="display:flex; align-items:flex-end;">
+        <label class="checkbox-row"><input type="checkbox" class="hp-archived" ${s.archived ? 'checked' : ''} /> archived (hidden from public page)</label>
+      </div>
+    </div>
+    <button type="button" class="small" data-action="save-section">Save</button>
+    <button type="button" class="danger small" data-action="delete-section">Delete</button>
+  </div>`;
+}
+
+function renderHomepage() {
+  const el = document.getElementById('tab-homepage');
+  el.innerHTML = `
+    <h2 class="section-title" style="margin-top:0;">Homepage Copy</h2>
+    <p class="intro">
+      This is what visitors see on the front page before they ever get to the wish list —
+      the hero tagline and the content sections below it. Changes here go live immediately.
+    </p>
+
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--accent);">Hero</h3>
+      <div class="field-group">
+        <label class="field">Tagline (under "THE EREBE")</label>
+        <input type="text" id="hp-tagline" value="${escapeHtml(homepage.hero_tagline || '')}" />
+      </div>
+      <div class="field-group">
+        <label class="field">Subtagline</label>
+        <input type="text" id="hp-subtagline" value="${escapeHtml(homepage.hero_subtagline || '')}" />
+      </div>
+      <div class="field-group">
+        <label class="field">"Want to be part of it?" pitch text (plain text, next to the Participate button)</label>
+        <textarea id="hp-cta-text" rows="2">${escapeHtml(homepage.cta_text || '')}</textarea>
+      </div>
+      <button type="button" id="save-hero-btn" class="small">Save</button>
+    </div>
+
+    <h3 style="color:var(--accent); margin: 24px 0 10px;">Content sections (${homepage.sections.length})</h3>
+    ${homepage.sections.map(homepageSectionHtml).join('') || '<p class="intro">None yet.</p>'}
+
+    <details class="card">
+      <summary style="cursor:pointer; color:var(--accent);">+ Add a new section</summary>
+      <div style="margin-top:10px;">
+        <div class="field-group">
+          <label class="field">Section heading</label>
+          <input type="text" id="new-section-heading" />
+        </div>
+        <label class="field">Body</label>
+        ${richTextEditorHtml('')}
+        <button type="button" id="create-section-btn" class="small" style="margin-top:10px;">Add section</button>
+      </div>
+    </details>`;
+
+  document.getElementById('save-hero-btn').addEventListener('click', async () => {
+    const tagline = document.getElementById('hp-tagline').value.trim();
+    const subtagline = document.getElementById('hp-subtagline').value.trim();
+    const ctaText = document.getElementById('hp-cta-text').value.trim();
+    const { error } = await supabase.rpc('admin_update_site_settings', {
+      p_session_token: token,
+      p_hero_tagline: tagline,
+      p_hero_subtagline: subtagline,
+      p_cta_text: ctaText,
+    });
+    if (error) {
+      notice(rpcErrorMessage(error));
+      return;
+    }
+    await loadDashboard();
+  });
+
+  el.querySelectorAll('.card[data-id] .rte').forEach((rte) => wireRichTextEditor(rte.parentElement));
+
+  el.querySelectorAll('[data-action="save-section"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.card');
+      const id = card.dataset.id;
+      const bodyHtml = sanitizeRichText(card.querySelector('.rte-editable').innerHTML);
+      const { error } = await supabase.rpc('admin_upsert_page_section', {
+        p_session_token: token,
+        p_id: id,
+        p_heading: card.querySelector('.hp-heading').value.trim() || null,
+        p_body_html: bodyHtml,
+        p_sort_order: Number(card.querySelector('.hp-sort').value) || 0,
+        p_archived: card.querySelector('.hp-archived').checked,
+      });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      await loadDashboard();
+    });
+  });
+
+  el.querySelectorAll('[data-action="delete-section"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.card');
+      const id = card.dataset.id;
+      if (!confirm('Delete this section entirely? This cannot be undone.')) return;
+      const { error } = await supabase.rpc('admin_delete_page_section', { p_session_token: token, p_id: id });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      await loadDashboard();
+    });
+  });
+
+  const newSectionRte = el.querySelector('details .rte');
+  wireRichTextEditor(newSectionRte.parentElement);
+
+  document.getElementById('create-section-btn').addEventListener('click', async () => {
+    const heading = document.getElementById('new-section-heading').value.trim();
+    const bodyHtml = sanitizeRichText(newSectionRte.querySelector('.rte-editable').innerHTML);
+    if (!heading && !bodyHtml.trim()) {
+      notice('Add a heading or some body text before saving.');
+      return;
+    }
+    const nextSort = homepage.sections.length ? Math.max(...homepage.sections.map((s) => s.sort_order)) + 10 : 10;
+    const { error } = await supabase.rpc('admin_upsert_page_section', {
+      p_session_token: token,
+      p_id: null,
+      p_heading: heading || null,
+      p_body_html: bodyHtml,
+      p_sort_order: nextSort,
+      p_archived: false,
+    });
+    if (error) {
+      notice(rpcErrorMessage(error));
+      return;
+    }
+    await loadDashboard();
   });
 }
 

@@ -26,8 +26,13 @@ Live at: https://chippercantcode.github.io/the-erebe/
   than applied instantly, since Inani may already be counting on it).
 - `admin.html` — shared admin view for Inani and the lead artist. Login is name `admin`,
   passcode `5555` (fixed, per the original request). Approve/deny donor change requests,
-  edit any donor's contributions, and edit the master wish list (add items, set target
-  quantities/units so items can be "fully covered," archive items).
+  edit any donor's contributions, edit the master wish list (add items, set target
+  quantities/units so items can be "fully covered," archive items), and — under
+  **Homepage Copy** — edit everything on the public landing page: the hero
+  tagline/subtagline, the "Participate" pitch text, and a reorderable list of rich-text
+  content sections (bold, headings, bulleted/numbered lists, links), via a small
+  toolbar over a `contenteditable` box. No code changes needed for Inani to update the
+  front page himself.
 
 ## How it works
 
@@ -50,6 +55,19 @@ needs to be recreated.
 `assets/elevation-view-white.png` is Inani's elevation drawing from the Drive folder,
 inverted to white-on-transparent so it glows against the dark background — that's what
 `index.html`'s hero reveal animates in.
+
+Homepage copy is editable content, not hardcoded: `index.html` ships the current copy
+as a static fallback (shown instantly, and what you see if the fetch ever fails —
+Supabase being briefly down shouldn't tank the front page), and `index.js` swaps in
+the live version from `get_homepage_content()` once it loads. Rich text is edited with
+`document.execCommand` (bold/italic/heading/lists/links) rather than a bundled editor
+library, to keep the no-build-step setup — deprecated but still implemented in every
+major browser for exactly this basic a feature set. The one real security boundary is
+`sanitizeRichText()` in `shared.js`: a strict tag/attribute allowlist that runs
+client-side on `body_html` before it's ever set via `innerHTML` on a page a regular
+visitor loads (writes only happen through the admin-passcode-gated RPCs, but that's an
+access boundary, not a content one — sanitizing at render time is what actually stops
+a stray `<script>` from running in a visitor's browser).
 
 ## Running it
 
