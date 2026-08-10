@@ -333,10 +333,10 @@ footer.foot a { color: var(--text-faint); }
   margin: 0 auto;
   aspect-ratio: 752 / 1360;
   filter: drop-shadow(0 0 18px rgba(201, 138, 58, 0.28));
-  transform: scale(1.35) translateY(14px);
+  transform: scale(1.6) translateY(14px);
   transform-origin: top center;
-  animation: erebe-settle 1.05s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-  animation-delay: 1.35s;
+  animation: erebe-settle 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation-delay: 2.85s;
 }
 @keyframes erebe-settle {
   to { transform: scale(1) translateY(-8px); }
@@ -352,7 +352,7 @@ footer.foot a { color: var(--text-faint); }
   height: 100%;
   object-fit: contain;
   clip-path: inset(100% var(--r) 0 var(--l));
-  animation: erebe-spire-rise 1.05s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: erebe-spire-rise 2.2s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 @keyframes erebe-spire-rise {
   to { clip-path: inset(0 var(--r) 0 var(--l)); }
@@ -361,7 +361,7 @@ footer.foot a { color: var(--text-faint); }
 .hero-text {
   opacity: 0;
   animation: erebe-fade-in 1.3s ease forwards;
-  animation-delay: 1.95s;
+  animation-delay: 3.55s;
 }
 @keyframes erebe-fade-in {
   to { opacity: 1; }
