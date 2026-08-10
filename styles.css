@@ -320,7 +320,10 @@ footer.foot a { color: var(--text-faint); }
 .hero {
   text-align: center;
   padding: 36px 0 12px;
-  overflow-x: hidden; /* the art briefly scales up past its own box before settling */
+  /* the art briefly scales up past its own box before settling; overflow-x alone
+     computes overflow-y to auto (per the CSS overflow-x/-y interdependency rule),
+     which pops a real scrollbar on this box during the animation, so hide both. */
+  overflow: hidden;
 }
 
 /* Sized to the source PNG's aspect ratio so the wrapper holds its shape before the
