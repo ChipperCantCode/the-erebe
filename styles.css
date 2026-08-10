@@ -425,6 +425,17 @@ footer.foot a { color: var(--text-faint); }
 .cta-block p { color: var(--text-dim); margin: 0 0 16px; }
 .cta-block .btn { font-size: 1rem; padding: 12px 26px; }
 
+.discord-block {
+  text-align: center;
+  margin: 24px 0 20px;
+}
+.discord-block p { color: var(--text-dim); margin: 0 0 12px; }
+.discord-block iframe {
+  max-width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
 /* ---------- rich text editor (admin homepage copy) ---------- */
 .rte-toolbar {
   display: flex;
