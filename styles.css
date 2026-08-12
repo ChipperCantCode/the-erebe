@@ -536,3 +536,168 @@ footer.foot a { color: var(--text-faint); }
 .rte-editable h1, .rte-editable h2, .rte-editable h3 { color: var(--accent); margin: 10px 0; }
 .rte-editable ul, .rte-editable ol { margin: 0 0 10px; padding-left: 22px; }
 .rte-editable a { color: var(--link); }
+
+/* ---------- Chipper Mode easter egg ---------- */
+
+/* Smooth crossfade for the handful of elements whose colors change between the
+   default gloom and Chipper Mode. */
+body, header.top, nav.top-links a, .pill, .card, button, .btn,
+.cta-block, .live-embed, .hero-art-wrap {
+  transition: background-color 0.8s ease, border-color 0.8s ease, color 0.8s ease,
+    filter 0.8s ease, box-shadow 0.8s ease;
+}
+
+/* "Hemera" hover hint — deliberately styled to be indistinguishable from surrounding
+   text; only the tooltip on hover/focus gives it away. */
+.hemera-hint {
+  color: inherit;
+  cursor: default;
+  position: relative;
+}
+
+.chipper-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  width: max-content;
+  max-width: 240px;
+  background: linear-gradient(135deg, #fff6d8, #ffe3b3);
+  color: #7a4a00;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 1000;
+}
+.chipper-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: #ffe3b3;
+}
+.hemera-hint:hover .chipper-tooltip,
+.hemera-hint:focus-visible .chipper-tooltip,
+.chipper-corner-sun:hover .chipper-tooltip,
+.chipper-corner-sun:focus-visible .chipper-tooltip {
+  opacity: 1;
+  transform: translate(-50%, -14px);
+}
+
+/* Sunrise flood: a small disc planted behind the hero art that grows until it floods
+   the whole viewport, pushing daylight through the dark theme. Removed once Chipper
+   Mode's own bright background takes over. */
+.chipper-flood {
+  position: fixed;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffbe0 0%, #ffe58a 32%, #ffb347 62%, #ff8c42 100%);
+  transform: translate(-50%, -50%) scale(0.05);
+  opacity: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+body.chipper-dawning .chipper-flood {
+  animation: chipper-sun-grow 2.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+@keyframes chipper-sun-grow {
+  0% { transform: translate(-50%, -50%) scale(0.05); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(70); opacity: 1; }
+}
+
+/* Floating sun/cat icons that drift up the screen while Chipper Mode is arriving and,
+   more sparsely, while it stays active. */
+.chipper-float {
+  position: fixed;
+  bottom: -60px;
+  z-index: 9997;
+  pointer-events: none;
+  animation-name: chipper-float-up;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
+}
+@keyframes chipper-float-up {
+  0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateY(-115vh) translateX(var(--drift, 0px)) rotate(var(--spin, 0deg)); opacity: 0; }
+}
+
+/* The sun that settles in a corner and stays for the duration of Chipper Mode —
+   itself a hint-bearing anchor, mirroring the Hemera hint, for how to reverse it. */
+.chipper-corner-sun {
+  position: fixed;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffbe0 0%, #ffe58a 40%, #ffb347 75%, #ff8c42 100%);
+  box-shadow: 0 0 20px 6px rgba(255, 200, 80, 0.55);
+  z-index: 9999;
+  cursor: default;
+  animation: chipper-pulse 3s ease-in-out infinite;
+}
+.chipper-corner-sun--settled {
+  top: 16px;
+  right: 16px;
+}
+@keyframes chipper-pulse {
+  0%, 100% { box-shadow: 0 0 20px 6px rgba(255, 200, 80, 0.55); }
+  50% { box-shadow: 0 0 32px 10px rgba(255, 200, 80, 0.85); }
+}
+
+/* The theme itself: bright, colorful, pastel, sunny. Custom properties are inherited
+   by every descendant, so redefining them here reskins nearly the whole site — the
+   overrides below handle the handful of spots with hardcoded colors instead of var(). */
+body.chipper-mode {
+  --bg: #fff6e0;
+  --bg-panel: #fffaf0;
+  --bg-panel-2: #fff1cf;
+  --border: #ffd27a;
+  --text: #4a3200;
+  --text-dim: #8a6420;
+  --text-faint: #b3903f;
+  --accent: #ff8c42;
+  --accent-2: #ffb347;
+  --good: #4caf50;
+  --warn: #ff9800;
+  --bad: #ef5350;
+  --link: #ff6f3c;
+  --shadow: 0 4px 18px rgba(255, 180, 80, 0.25);
+  background: radial-gradient(ellipse at top, #fffef0 0%, var(--bg) 60%);
+}
+body.chipper-mode .hero-art-wrap {
+  filter: drop-shadow(0 0 26px rgba(255, 179, 71, 0.6)) brightness(1.12) saturate(1.25);
+}
+body.chipper-mode .hero-art-slice {
+  filter: sepia(0.45) hue-rotate(-10deg) saturate(1.7) brightness(1.05);
+}
+body.chipper-mode button, body.chipper-mode .btn {
+  color: #3a2200;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chipper-flood,
+  body.chipper-dawning .chipper-flood {
+    animation: none;
+    display: none;
+  }
+  .chipper-float {
+    animation: none;
+    display: none;
+  }
+  .chipper-corner-sun {
+    animation: none;
+  }
+}
