@@ -462,6 +462,25 @@ footer.foot a { color: var(--text-faint); }
   font-size: 0.85rem;
   margin: 8px 0 0;
 }
+.past-streams { margin-top: 16px; }
+.past-streams-label {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 6px;
+}
+#past-streams-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.88rem;
+}
+#past-streams-list a { color: var(--text-dim); }
+#past-streams-list a:hover { color: var(--accent); }
 
 /* ---------- rich text editor (admin homepage copy) ---------- */
 .rte-toolbar {

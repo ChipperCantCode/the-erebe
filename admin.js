@@ -25,6 +25,7 @@ let token = getAdminToken();
 let dash = { wishlist_items: [], donors: [], change_requests: [] };
 let homepage = { hero_tagline: '', hero_subtagline: '', cta_text: '', sections: [] };
 let feedbackRequests = [];
+let buildStreams = [];
 
 const loginBox = document.getElementById('login-box');
 const dashboard = document.getElementById('dashboard');
@@ -60,13 +61,15 @@ document.querySelectorAll('.tabs [data-tab]').forEach((btn) => {
 
 async function loadDashboard() {
   clearNotice();
-  const [{ data, error }, { data: hpData, error: hpError }, { data: fbData, error: fbError }] = await Promise.all([
-    supabase.rpc('admin_get_dashboard', { p_session_token: token }),
-    supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
-    supabase.rpc('admin_get_feedback_requests', { p_session_token: token }),
-  ]);
-  if (error || hpError || fbError) {
-    notice(rpcErrorMessage(error || hpError || fbError));
+  const [{ data, error }, { data: hpData, error: hpError }, { data: fbData, error: fbError }, { data: bsData, error: bsError }] =
+    await Promise.all([
+      supabase.rpc('admin_get_dashboard', { p_session_token: token }),
+      supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
+      supabase.rpc('admin_get_feedback_requests', { p_session_token: token }),
+      supabase.rpc('get_build_streams'),
+    ]);
+  if (error || hpError || fbError || bsError) {
+    notice(rpcErrorMessage(error || hpError || fbError || bsError));
     clearAdminToken();
     token = '';
     loginBox.classList.remove('hidden');
@@ -76,6 +79,7 @@ async function loadDashboard() {
   dash = data;
   homepage = hpData;
   feedbackRequests = fbData || [];
+  buildStreams = bsData || [];
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
   renderChangeRequests();
@@ -591,6 +595,28 @@ function homepageSectionHtml(s) {
   </div>`;
 }
 
+function buildStreamHtml(s) {
+  return `
+  <div class="card" data-id="${s.id}">
+    <div class="row">
+      <div class="field-group">
+        <label class="field">Video URL (Facebook share link)</label>
+        <input type="text" class="bs-url" value="${escapeHtml(s.video_url)}" />
+      </div>
+      <div class="field-group">
+        <label class="field">Date</label>
+        <input type="date" class="bs-date" value="${s.stream_date}" />
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field">Title (optional)</label>
+      <input type="text" class="bs-title" value="${escapeHtml(s.title || '')}" />
+    </div>
+    <button type="button" class="small" data-action="save-stream">Save</button>
+    <button type="button" class="danger small" data-action="delete-stream">Delete</button>
+  </div>`;
+}
+
 function renderHomepage() {
   const el = document.getElementById('tab-homepage');
   el.innerHTML = `
@@ -630,6 +656,35 @@ function renderHomepage() {
         <label class="field">Body</label>
         ${richTextEditorHtml('')}
         <button type="button" id="create-section-btn" class="small" style="margin-top:10px;">Add section</button>
+      </div>
+    </details>
+
+    <h3 style="color:var(--accent); margin: 24px 0 10px;">Build livestreams (${buildStreams.length})</h3>
+    <p class="intro">
+      Inani goes live on Facebook roughly monthly. The newest one here shows as an embed on the
+      homepage; older ones list underneath as a dated archive. Paste the share link from the "..."
+      menu on the Facebook post.
+    </p>
+    ${buildStreams.map(buildStreamHtml).join('') || '<p class="intro">None yet.</p>'}
+
+    <details class="card">
+      <summary style="cursor:pointer; color:var(--accent);">+ Add a build stream</summary>
+      <div style="margin-top:10px;">
+        <div class="row">
+          <div class="field-group">
+            <label class="field">Video URL (Facebook share link)</label>
+            <input type="text" id="new-stream-url" placeholder="https://www.facebook.com/share/v/..." />
+          </div>
+          <div class="field-group">
+            <label class="field">Date</label>
+            <input type="date" id="new-stream-date" value="${new Date().toISOString().slice(0, 10)}" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field">Title (optional)</label>
+          <input type="text" id="new-stream-title" placeholder="e.g. Drafting the digital model plans" />
+        </div>
+        <button type="button" id="create-stream-btn" class="small">Add stream</button>
       </div>
     </details>`;
 
@@ -705,6 +760,59 @@ function renderHomepage() {
       p_body_html: bodyHtml,
       p_sort_order: nextSort,
       p_archived: false,
+    });
+    if (error) {
+      notice(rpcErrorMessage(error));
+      return;
+    }
+    await loadDashboard();
+  });
+
+  el.querySelectorAll('[data-action="save-stream"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.card');
+      const id = card.dataset.id;
+      const { error } = await supabase.rpc('admin_upsert_build_stream', {
+        p_session_token: token,
+        p_id: id,
+        p_video_url: card.querySelector('.bs-url').value.trim(),
+        p_title: card.querySelector('.bs-title').value.trim(),
+        p_stream_date: card.querySelector('.bs-date').value || null,
+      });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      await loadDashboard();
+    });
+  });
+
+  el.querySelectorAll('[data-action="delete-stream"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.card');
+      const id = card.dataset.id;
+      if (!confirm('Delete this build stream entirely? This cannot be undone.')) return;
+      const { error } = await supabase.rpc('admin_delete_build_stream', { p_session_token: token, p_id: id });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      await loadDashboard();
+    });
+  });
+
+  document.getElementById('create-stream-btn').addEventListener('click', async () => {
+    const videoUrl = document.getElementById('new-stream-url').value.trim();
+    if (!videoUrl) {
+      notice('Paste the Facebook video link before saving.');
+      return;
+    }
+    const { error } = await supabase.rpc('admin_upsert_build_stream', {
+      p_session_token: token,
+      p_id: null,
+      p_video_url: videoUrl,
+      p_title: document.getElementById('new-stream-title').value.trim(),
+      p_stream_date: document.getElementById('new-stream-date').value || null,
     });
     if (error) {
       notice(rpcErrorMessage(error));

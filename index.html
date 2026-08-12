@@ -62,24 +62,14 @@
     </div>
   </div>
 
-  <div class="live-block">
-    <h2>Live from the build</h2>
-    <div class="live-embed">
-      <iframe
-        src="https://www.facebook.com/plugins/video.php?height=314&amp;href=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fv%2F1C4irXS5d2%2F&amp;show_text=false&amp;width=560&amp;t=0"
-        width="100%"
-        height="400"
-        style="border:none;overflow:hidden"
-        scrolling="no"
-        frameborder="0"
-        allowfullscreen="true"
-        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-        title="Live stream of Inani drawing the Erebe build plans"
-      ></iframe>
+  <div id="live-block" class="live-block hidden">
+    <h2 id="live-heading">Live from the build</h2>
+    <div class="live-embed" id="live-embed"></div>
+    <p class="live-fallback" id="live-fallback"></p>
+    <div id="past-streams" class="past-streams hidden">
+      <p class="past-streams-label">Past build sessions</p>
+      <ul id="past-streams-list"></ul>
     </div>
-    <p class="live-fallback">
-      Not loading? <a href="https://www.facebook.com/share/v/1C4irXS5d2/" target="_blank" rel="noopener">Watch on Facebook →</a>
-    </p>
   </div>
 
   <div class="landing-section">

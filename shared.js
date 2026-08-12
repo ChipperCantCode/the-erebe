@@ -145,6 +145,13 @@ export function parseQuantityForItem(item, raw) {
   return parseQuantity(raw);
 }
 
+export function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 // ---------- build window + crew location (shared across contribute/my-list/admin) ----------
 export const BUILD_START_DATE = '2026-09-16';
 export const BUILD_END_DATE = '2026-10-07';
