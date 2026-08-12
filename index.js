@@ -49,8 +49,8 @@ loadBuildStreams();
 
 // The static markup already in index.html is a real fallback (and what Inani edits
 // via Admin -> Homepage Copy starts from it) — this just upgrades it live once the
-// fetch resolves. The hero image + reveal animation are pure CSS/local-asset and never
-// wait on this.
+// fetch resolves. The hero image + reveal animation (hero-reveal.js) are local-asset
+// only and never wait on this.
 async function loadHomepageContent() {
   const { data, error } = await supabase.rpc('get_homepage_content');
   if (error || !data) return; // keep the static fallback already on the page
