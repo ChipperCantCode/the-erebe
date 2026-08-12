@@ -36,9 +36,12 @@ at https://chippercantcode.github.io/the-erebe/)
   items), and — under **Homepage Copy** — edit everything on the public landing page:
   the hero tagline/subtagline, the "Participate" pitch text, and a reorderable list of
   rich-text content sections (bold, headings, bulleted/numbered lists, links), via a
-  small toolbar over a `contenteditable` box. No code changes needed for Inani to
-  update the front page himself. The **Feedback** tab shows the history of everything
-  submitted through the public feedback form (see below) and can also submit directly.
+  small toolbar over a `contenteditable` box, and a list of **build livestream** entries
+  (Inani goes live on Facebook roughly monthly to draw/plan) — the newest shows as a real
+  embed on the homepage, older ones list underneath as a dated archive. No code changes
+  needed for Inani to update the front page himself, add a new stream, or retire an old
+  one. The **Feedback** tab shows the history of everything submitted through the public
+  feedback form (see below) and can also submit directly.
 - `feedback.html` — public, no login needed. Anyone can leave a bug report or feature
   request; it's published as a GitHub issue on this repo automatically, so Chipper gets
   a normal GitHub notification without any of this needing to run back through a
