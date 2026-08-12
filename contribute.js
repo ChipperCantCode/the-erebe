@@ -428,7 +428,12 @@ function wireDetailInputs() {
         card.querySelectorAll(`input[name="${g.key}-${itemId}"]`).forEach((r) => {
           r.addEventListener('change', () => {
             details[itemId][g.key] = r.value;
-            if (itemId === firstIdForGroup && sameForAll[g.key]) propagateSameForAll(g.key);
+            if (itemId === firstIdForGroup && sameForAll[g.key]) {
+              propagateSameForAll(g.key);
+              // radio state lives in the `checked` attribute, not the DOM value — the disabled
+              // copies on other items won't visually reflect the new pick without a re-render
+              buildDetailSteps();
+            }
           });
         });
       } else {
