@@ -323,14 +323,28 @@ footer.foot a { color: var(--text-faint); }
 }
 
 /* Sized to the source PNG's aspect ratio so the wrapper holds its shape before the
-   image finishes loading. */
+   image finishes loading. Sized big and stays put at rest (no shift) — the shrink
+   only happens at the very end, in place, once the drawing is done (see
+   erebe-art-settle below). */
 .hero-art-wrap {
   position: relative;
-  max-width: 380px;
-  width: 80%;
+  max-width: 460px;
+  width: 92%;
   margin: 0 auto;
   aspect-ratio: 752 / 1360;
   filter: drop-shadow(0 0 18px rgba(201, 138, 58, 0.28));
+  transform-origin: center center;
+}
+/* Once the spires finish drawing (slices run 6.6s, last one starts at 1.08s, so all
+   are done by 7.68s), shrink a bit and fade to semi-transparent in place — scaling
+   from the center so nothing shifts downward — while .hero-text fades in on the same
+   schedule and overlaps it. */
+.hero-art-wrap.play {
+  animation: erebe-art-settle 1.3s ease forwards;
+  animation-delay: 7.8s;
+}
+@keyframes erebe-art-settle {
+  to { transform: scale(0.88); opacity: 0.45; }
 }
 
 /* 7 stacked copies of the same artwork, each clipped to one vertical slice (--l/--r,
@@ -353,8 +367,15 @@ footer.foot a { color: var(--text-faint); }
   to { clip-path: inset(0 var(--r) 0 var(--l)); }
 }
 
+/* Transforms (the settle shrink on .hero-art-wrap) don't affect layout flow, so this
+   negative margin is sized against the art's own resting (unscaled) box to pull the
+   text up into the space the art vacates once it shrinks — giving a real overlap with
+   the settled, semi-transparent art rather than just closing the gap below it. */
 .hero-text {
   opacity: 0;
+  position: relative;
+  z-index: 1;
+  margin-top: -110px;
 }
 .hero-art-wrap.play ~ .hero-text {
   animation: erebe-fade-in 1.3s ease forwards;
@@ -384,6 +405,12 @@ footer.foot a { color: var(--text-faint); }
   .hero-art-slice,
   .hero-art-wrap.play .hero-art-slice {
     clip-path: inset(0 var(--r) 0 var(--l));
+    animation: none;
+  }
+  .hero-art-wrap,
+  .hero-art-wrap.play {
+    transform: scale(0.88);
+    opacity: 0.45;
     animation: none;
   }
   .hero-text,
