@@ -445,7 +445,7 @@ function renderWishlist() {
         <textarea id="new-item-desc" placeholder="Description" rows="2" style="margin-top:8px;"></textarea>
         <div class="row" style="margin-top:8px;">
           <input type="number" id="new-item-target" placeholder="Target quantity (optional)" />
-          <input type="text" id="new-item-unit" placeholder="Unit (optional)" />
+          <input type="text" id="new-item-unit" placeholder="Unit (optional)" value="people" />
           <input type="number" id="new-item-sort" placeholder="Sort order" value="0" />
         </div>
         <button type="button" id="create-item-btn" class="small" style="margin-top:8px;">Create item</button>
@@ -460,6 +460,13 @@ function renderWishlist() {
         );
       })
       .join('');
+
+  document.getElementById('new-item-category').addEventListener('change', (e) => {
+    const unitInput = document.getElementById('new-item-unit');
+    if (e.target.value === 'volunteer' && !unitInput.value.trim()) {
+      unitInput.value = 'people';
+    }
+  });
 
   document.getElementById('create-item-btn').addEventListener('click', async () => {
     const name = document.getElementById('new-item-name').value.trim();
@@ -488,6 +495,16 @@ function renderWishlist() {
       return;
     }
     await loadDashboard();
+  });
+
+  el.querySelectorAll('.w-category').forEach((select) => {
+    select.addEventListener('change', () => {
+      const card = select.closest('.card');
+      const unitInput = card.querySelector('.w-unit');
+      if (select.value === 'volunteer' && !unitInput.value.trim()) {
+        unitInput.value = 'people';
+      }
+    });
   });
 
   el.querySelectorAll('[data-action="save-item"]').forEach((btn) => {
