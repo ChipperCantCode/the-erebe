@@ -210,7 +210,10 @@ function renderFullPicker() {
       syncCartFromSelected();
       clearNotice();
       renderSelectedItems();
-      renderFullPicker();
+      card.remove();
+      if (!el.querySelector('.card')) {
+        el.innerHTML = '<p class="intro">Everything is already in your list.</p>';
+      }
     });
   });
 }
@@ -247,6 +250,11 @@ document.getElementById('logout-switch').addEventListener('click', () => {
 });
 
 document.getElementById('back-to-1').addEventListener('click', () => showStep('step-1'));
+
+document.getElementById('already-logged-in-continue').addEventListener('click', () => {
+  buildDetailSteps();
+  showStep('step-3');
+});
 
 document.getElementById('login-continue-btn').addEventListener('click', async () => {
   clearNotice();
