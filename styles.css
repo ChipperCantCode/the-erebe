@@ -439,6 +439,30 @@ footer.foot a { color: var(--text-faint); }
   border: 1px solid var(--border);
 }
 
+.live-block {
+  max-width: 640px;
+  margin: 8px auto 0;
+  text-align: center;
+}
+.live-block h2 {
+  color: var(--accent);
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  margin: 0 0 12px;
+}
+.live-embed {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.live-embed iframe { display: block; }
+.live-fallback {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  margin: 8px 0 0;
+}
+
 /* ---------- rich text editor (admin homepage copy) ---------- */
 .rte-toolbar {
   display: flex;
