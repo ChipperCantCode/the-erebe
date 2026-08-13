@@ -24,6 +24,10 @@ body {
   background: radial-gradient(ellipse at top, #211c17 0%, var(--bg) 60%);
   color: var(--text);
   line-height: 1.5;
+  /* Stops the browser's native pull-to-refresh/bounce-navigation from hijacking down
+     swipes at the top of the page -- normal in-page scrolling is untouched. Needed for
+     Chipper Mode's swipe code (chipper-mode.js) to ever see a completed downward swipe. */
+  overscroll-behavior-y: contain;
 }
 
 a { color: var(--link); }
