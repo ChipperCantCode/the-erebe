@@ -6,6 +6,9 @@
 // Trigger: the Konami code (↑ ↑ ↓ ↓ ← → ← → B A) floods the site with daylight. Entering
 // the code backwards (A B → ← → ← ↓ ↓ ↑ ↑) returns it to the gloom. State is in-memory
 // only — a refresh resets to the normal dark theme.
+//
+// Mobile has no arrow/B/A keys, so touch gets its own equivalent listener below: swipe
+// up/down/left/right stand in for the direction keys, two taps stand in for B A.
 
 const FORWARD_CODE = [
   'arrowup', 'arrowup', 'arrowdown', 'arrowdown',
@@ -13,8 +16,8 @@ const FORWARD_CODE = [
   'b', 'a',
 ];
 const REVERSE_CODE = [...FORWARD_CODE].slice().reverse();
-const HEMERA_HINT = 'To bring the day, type the ancient code of the sun (↑ ↑ ↓ ↓ ← → ← → B A).';
-const SUN_HINT = 'To bring back the gloom, reverse the ancient code (A B → ← → ← ↓ ↓ ↑ ↑).';
+const HEMERA_HINT = 'To bring the day, type the ancient code of the sun (↑ ↑ ↓ ↓ ← → ← → B A) — or on a phone, swipe it (↑ ↑ ↓ ↓ ← → ← →, then two taps).';
+const SUN_HINT = 'To bring back the gloom, reverse the ancient code (A B → ← → ← ↓ ↓ ↑ ↑) — or on a phone, two taps then swipe it in reverse.';
 
 // ---------- Hemera hover hint ----------
 // Wraps the literal word "Hemera" wherever it appears in the homepage copy (static
@@ -94,6 +97,62 @@ document.addEventListener('keydown', (e) => {
     deactivateChipperMode();
   }
 });
+
+// ---------- Konami code listener (touch) ----------
+// Mobile equivalent: swipe up/up/down/down/left/right/left/right stands in for the
+// arrows, two taps stand in for B A. Detected purely from touchstart/touchend deltas,
+// with no preventDefault anywhere -- normal scrolling and tapping links/buttons keeps
+// working exactly as before, even mid-attempt.
+const SWIPE_FORWARD = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'tap', 'tap'];
+const SWIPE_REVERSE = [...SWIPE_FORWARD].slice().reverse();
+const SWIPE_MIN_DISTANCE = 40; // px -- below this a "swipe" is too short to count as deliberate
+const TAP_MAX_DISTANCE = 12; // px -- movement under this counts as a tap, not a swipe
+const TAP_MAX_DURATION = 400; // ms
+
+let swipeForwardIdx = 0;
+let swipeReverseIdx = 0;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+
+document.addEventListener('touchstart', (e) => {
+  const touch = e.changedTouches[0];
+  if (!touch) return;
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  touchStartTime = Date.now();
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  const target = e.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+
+  const touch = e.changedTouches[0];
+  if (!touch) return;
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+  const distance = Math.hypot(dx, dy);
+
+  let gesture;
+  if (distance <= TAP_MAX_DISTANCE && Date.now() - touchStartTime <= TAP_MAX_DURATION) {
+    gesture = 'tap';
+  } else if (distance >= SWIPE_MIN_DISTANCE) {
+    gesture = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  } else {
+    return; // ambiguous flick -- ignore rather than reset an attempt in progress
+  }
+
+  swipeForwardIdx = gesture === SWIPE_FORWARD[swipeForwardIdx] ? swipeForwardIdx + 1 : (gesture === SWIPE_FORWARD[0] ? 1 : 0);
+  swipeReverseIdx = gesture === SWIPE_REVERSE[swipeReverseIdx] ? swipeReverseIdx + 1 : (gesture === SWIPE_REVERSE[0] ? 1 : 0);
+
+  if (swipeForwardIdx === SWIPE_FORWARD.length) {
+    swipeForwardIdx = 0;
+    activateChipperMode();
+  } else if (swipeReverseIdx === SWIPE_REVERSE.length) {
+    swipeReverseIdx = 0;
+    deactivateChipperMode();
+  }
+}, { passive: true });
 
 // ---------- Chipper Mode ----------
 const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
