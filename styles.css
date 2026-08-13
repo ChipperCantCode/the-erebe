@@ -325,13 +325,16 @@ footer.foot a { color: var(--text-faint); }
 /* Sized to the source PNG's aspect ratio so the wrapper holds its shape before the
    image finishes loading. Sized big and stays put at rest (no shift) — the shrink
    only happens at the very end, in place, once the drawing is done (see
-   erebe-art-settle below). */
+   erebe-art-settle below). The source PNG is cropped tight to its visible line-work
+   (see assets/elevation-view-white.png) — it used to carry ~15% transparent padding
+   above the art and ~22% below, which left a dead blank strip in the box even once
+   the reveal had finished (issue #15 reopened). */
 .hero-art-wrap {
   position: relative;
   max-width: 460px;
   width: 92%;
   margin: 0 auto;
-  aspect-ratio: 752 / 1360;
+  aspect-ratio: 736 / 878;
   filter: drop-shadow(0 0 18px rgba(201, 138, 58, 0.28));
   transform-origin: center center;
 }
@@ -375,7 +378,7 @@ footer.foot a { color: var(--text-faint); }
   opacity: 0;
   position: relative;
   z-index: 1;
-  margin-top: -110px;
+  margin-top: -60px;
 }
 .hero-art-wrap.play ~ .hero-text {
   animation: erebe-fade-in 1.3s ease forwards;
