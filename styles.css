@@ -593,6 +593,31 @@ body, header.top, nav.top-links a, .pill, .card, button, .btn,
   transform: translate(-50%, -14px);
 }
 
+/* The corner sun sits fixed at the top-right of the viewport, so the shared tooltip's
+   default "centered above" placement pushes it off the top and right edges of the
+   screen — invisible instead of just hard to read. Anchor it below-right of the sun
+   and let it grow left/down, which keeps it fully on screen. */
+.chipper-corner-sun .chipper-tooltip {
+  bottom: auto;
+  top: 100%;
+  left: auto;
+  right: 0;
+  transform: translate(0, 6px);
+}
+.chipper-corner-sun .chipper-tooltip::after {
+  top: auto;
+  bottom: 100%;
+  left: auto;
+  right: 12px;
+  margin-left: 0;
+  border-top-color: transparent;
+  border-bottom-color: #ffe3b3;
+}
+.chipper-corner-sun:hover .chipper-tooltip,
+.chipper-corner-sun:focus-visible .chipper-tooltip {
+  transform: translate(0, 14px);
+}
+
 /* Sunrise flood: a small disc planted behind the hero art that grows until it floods
    the whole viewport, pushing daylight through the dark theme. Removed once Chipper
    Mode's own bright background takes over. */
