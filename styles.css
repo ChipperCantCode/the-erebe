@@ -474,49 +474,6 @@ footer.foot a { color: var(--text-faint); }
   border: 1px solid var(--border);
 }
 
-.live-block {
-  max-width: 640px;
-  margin: 8px auto 0;
-  text-align: center;
-}
-.live-block h2 {
-  color: var(--accent);
-  font-size: 1.15rem;
-  letter-spacing: 0.02em;
-  margin: 0 0 12px;
-}
-.live-embed {
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-.live-embed iframe { display: block; }
-.live-fallback {
-  color: var(--text-faint);
-  font-size: 0.85rem;
-  margin: 8px 0 0;
-}
-.past-streams { margin-top: 16px; }
-.past-streams-label {
-  color: var(--text-faint);
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 6px;
-}
-#past-streams-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.88rem;
-}
-#past-streams-list a { color: var(--text-dim); }
-#past-streams-list a:hover { color: var(--accent); }
-
 /* ---------- rich text editor (admin homepage copy) ---------- */
 .rte-toolbar {
   display: flex;
@@ -549,7 +506,7 @@ footer.foot a { color: var(--text-faint); }
 /* Smooth crossfade for the handful of elements whose colors change between the
    default gloom and Chipper Mode. */
 body, header.top, nav.top-links a, .pill, .card, button, .btn,
-.cta-block, .live-embed, .hero-art-wrap {
+.cta-block, .hero-art-wrap {
   transition: background-color 0.8s ease, border-color 0.8s ease, color 0.8s ease,
     filter 0.8s ease, box-shadow 0.8s ease;
 }

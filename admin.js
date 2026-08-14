@@ -419,7 +419,10 @@ function itemCardHtml(i) {
           </div>
         </div>
         <label class="checkbox-row"><input type="checkbox" class="w-archived" ${i.archived ? 'checked' : ''} /> archived (hidden from public list)</label>
-        <button type="button" class="small" data-action="save-item" style="margin-top:10px;">Save</button>
+        <div class="row" style="margin-top:10px;">
+          <button type="button" class="small" data-action="save-item">Save</button>
+          <button type="button" class="danger small" data-action="delete-item">Delete</button>
+        </div>
       </div>
     </details>
   </div>`;
@@ -526,6 +529,20 @@ function renderWishlist() {
         p_sort_order: Number(card.querySelector('.w-sort').value) || 0,
         p_archived: card.querySelector('.w-archived').checked,
       });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      await loadDashboard();
+    });
+  });
+
+  el.querySelectorAll('[data-action="delete-item"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.card');
+      const id = card.dataset.id;
+      if (!confirm('Delete this item entirely? This cannot be undone.')) return;
+      const { error } = await supabase.rpc('admin_delete_item', { p_session_token: token, p_id: id });
       if (error) {
         notice(rpcErrorMessage(error));
         return;

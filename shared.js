@@ -250,6 +250,7 @@ export function rpcErrorMessage(err) {
     passcode_too_short: 'Passcode should be at least 3 characters.',
     contact_name_required: 'Please enter your name.',
     email_required: 'Please enter your email address.',
+    item_has_contributions: 'This item has contributions logged against it — remove those first, or archive the item instead.',
   };
   for (const key of Object.keys(known)) {
     if (code.includes(key)) return known[key];
