@@ -12,6 +12,7 @@ import {
   CREW_LOCATION_OPTIONS,
   CREW_LOCATION_LABELS,
 } from './shared.js';
+import { renderHoursTab, renderShiftsTab } from './admin-hours.js';
 
 const noticeArea = document.getElementById('notice-area');
 function notice(msg, kind = 'error') {
@@ -26,6 +27,7 @@ let dash = { wishlist_items: [], donors: [], change_requests: [] };
 let homepage = { hero_tagline: '', hero_subtagline: '', cta_text: '', sections: [] };
 let feedbackRequests = [];
 let buildStreams = [];
+let hoursDash = { people: [], roles: [], shifts: [], logs: [] };
 
 const loginBox = document.getElementById('login-box');
 const dashboard = document.getElementById('dashboard');
@@ -61,15 +63,21 @@ document.querySelectorAll('.tabs [data-tab]').forEach((btn) => {
 
 async function loadDashboard() {
   clearNotice();
-  const [{ data, error }, { data: hpData, error: hpError }, { data: fbData, error: fbError }, { data: bsData, error: bsError }] =
-    await Promise.all([
-      supabase.rpc('admin_get_dashboard', { p_session_token: token }),
-      supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
-      supabase.rpc('admin_get_feedback_requests', { p_session_token: token }),
-      supabase.rpc('get_build_streams'),
-    ]);
-  if (error || hpError || fbError || bsError) {
-    notice(rpcErrorMessage(error || hpError || fbError || bsError));
+  const [
+    { data, error },
+    { data: hpData, error: hpError },
+    { data: fbData, error: fbError },
+    { data: bsData, error: bsError },
+    { data: hrData, error: hrError },
+  ] = await Promise.all([
+    supabase.rpc('admin_get_dashboard', { p_session_token: token }),
+    supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
+    supabase.rpc('admin_get_feedback_requests', { p_session_token: token }),
+    supabase.rpc('get_build_streams'),
+    supabase.rpc('admin_get_hours_dashboard', { p_session_token: token }),
+  ]);
+  if (error || hpError || fbError || bsError || hrError) {
+    notice(rpcErrorMessage(error || hpError || fbError || bsError || hrError));
     clearAdminToken();
     token = '';
     loginBox.classList.remove('hidden');
@@ -80,10 +88,14 @@ async function loadDashboard() {
   homepage = hpData;
   feedbackRequests = fbData || [];
   buildStreams = bsData || [];
+  hoursDash = hrData;
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
   renderChangeRequests();
   renderDonors();
+  const hoursCtx = { data: hoursDash, token, notice, reload: loadDashboard };
+  renderHoursTab(document.getElementById('tab-hours'), hoursCtx);
+  renderShiftsTab(document.getElementById('tab-shifts'), hoursCtx);
   renderWishlist();
   renderHomepage();
   renderFeedback();

@@ -29,6 +29,28 @@ at https://chippercantcode.github.io/the-erebe/)
   work against the whole point of avoiding a real auth system) — if a donor forgets
   their passcode, an admin resets it for them from the Donors tab and relays the new
   one directly.
+- **Volunteer hours & work shifts** (on `my-list.html`, `admin.html`, and the homepage).
+  Anyone with an account can log when they worked from My List: an optional scheduled
+  shift, what they worked on (their own volunteer roles first, then "A different role…"
+  for any other volunteer role, then "Other" as a write-in, plus a link to sign up for a
+  role if they have none), the date (Sept 20, 2026 onward, when the build started),
+  start/end times, and hours. Hours are calculated from start/end (past midnight counts
+  as overnight) but can be changed by hand, up to 24. Entries can be edited or deleted
+  later. Hours are private: only the person and the admin see them. My List also lets
+  someone create an account without picking a wish-list item first, just to log hours
+  or join a shift.
+  Admin → **Shifts**: post "be here for this, on this date, from/to" shifts. Upcoming
+  ones show on the homepage with a sign-up link. Picking a shift when logging hours
+  fills in its date, times, and role. The admin can add or remove people on a shift.
+  Admin → **Hours**: everyone's entries with totals per person, filter by person, log or
+  edit hours for anyone (yourself included; times optional), and export the entries or
+  per-person totals as CSV. No approval step: editing is the approval.
+  **People without accounts**: the admin adds crew who never signed up (a playa name is
+  enough) and logs their hours. When they have an email, "Email claim link" opens a
+  pre-written email containing `my-list.html?claim=<code>` ("Copy claim link" for
+  texting). The person either picks a login name + passcode (turning the placeholder
+  into their account) or, if already logged in, adds those hours to their existing
+  account. A claim link only works once.
 - `admin.html` — shared admin view for Inani and the lead artist. Login is name `admin`,
   passcode `5555` (fixed, per the original request). Approve/deny donor change requests,
   edit any donor's contributions, reset a donor's passcode, edit the master wish list

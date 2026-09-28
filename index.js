@@ -1,4 +1,5 @@
-import { supabase, sanitizeRichText, escapeHtml, renderAccountStatus } from './shared.js';
+import { supabase, sanitizeRichText, escapeHtml, renderAccountStatus, formatDate } from './shared.js';
+import { formatTimeRange } from './hours.js';
 
 renderAccountStatus(document.getElementById('account-status'));
 
@@ -32,3 +33,29 @@ async function loadHomepageContent() {
 }
 
 loadHomepageContent();
+
+async function loadUpcomingShifts() {
+  const { data, error } = await supabase.rpc('get_upcoming_shifts');
+  if (error || !Array.isArray(data) || !data.length) return;
+
+  document.getElementById('upcoming-shift-list').innerHTML = data
+    .map((s) => {
+      const bits = [formatDate(s.shift_date), formatTimeRange(s.start_time, s.end_time)];
+      if (s.location) bits.push(s.location);
+      return `
+        <div class="card shift-card">
+          <div class="item-name">${escapeHtml(s.title)}</div>
+          <div class="item-desc">${escapeHtml(bits.join(' · '))}</div>
+          ${s.role_name && s.role_name !== s.title ? `<div class="item-desc">Role: ${escapeHtml(s.role_name)}</div>` : ''}
+          ${s.description ? `<div class="item-desc">${escapeHtml(s.description)}</div>` : ''}
+          <div class="shift-card-foot">
+            <span class="item-desc">${s.signup_count} signed up</span>
+            <a class="btn small-btn" href="my-list.html?shift=${encodeURIComponent(s.id)}#shifts">Sign up →</a>
+          </div>
+        </div>`;
+    })
+    .join('');
+  document.getElementById('upcoming-shifts').classList.remove('hidden');
+}
+
+loadUpcomingShifts();
