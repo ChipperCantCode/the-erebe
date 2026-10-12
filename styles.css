@@ -690,3 +690,14 @@ body.chipper-mode button, body.chipper-mode .btn {
     animation: none;
   }
 }
+
+/* Build-hours log (My List + admin Hours tab) */
+.hours-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.hours-row > button { flex-shrink: 0; }

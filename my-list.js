@@ -73,6 +73,103 @@ document.getElementById('anon-toggle').addEventListener('change', async (e) => {
   }
 });
 
+// Local calendar date as YYYY-MM-DD (toISOString() would give the UTC date, which is
+// already "tomorrow" on Pacific evenings).
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatWorkDate(isoDate) {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatHours(h) {
+  const n = Number(h);
+  return `${Number.isInteger(n) ? n : n.toFixed(2).replace(/0$/, '')} hr${n === 1 ? '' : 's'}`;
+}
+
+function renderHours(entries) {
+  const el = document.getElementById('hours-list');
+  if (!entries.length) {
+    el.innerHTML = '<p class="intro" style="margin:0;">No hours logged yet.</p>';
+    return;
+  }
+  const total = entries.reduce((sum, e) => sum + Number(e.hours), 0);
+  el.innerHTML =
+    `<p style="margin:0 0 8px;"><strong>Total: ${formatHours(total)}</strong> across ${new Set(entries.map((e) => e.work_date)).size} day(s)</p>` +
+    entries
+      .map(
+        (e) => `
+      <div class="hours-row" data-id="${e.id}">
+        <div>
+          <strong>${escapeHtml(formatWorkDate(e.work_date))}</strong> — ${formatHours(e.hours)}
+          ${e.note ? `<div class="item-desc" style="margin:2px 0 0;">${escapeHtml(e.note)}</div>` : ''}
+          ${e.entered_by === 'admin' ? '<div class="item-desc" style="margin:2px 0 0;">Added by an organizer</div>' : ''}
+        </div>
+        <button type="button" class="secondary small" data-action="delete-hours">Delete</button>
+      </div>`
+      )
+      .join('');
+  el.querySelectorAll('[data-action="delete-hours"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this entry?')) return;
+      const id = btn.closest('.hours-row').dataset.id;
+      const { error } = await supabase.rpc('delete_my_hours', { p_session_token: token, p_id: id });
+      if (error) notice(rpcErrorMessage(error));
+      else await loadHours();
+    });
+  });
+}
+
+async function loadHours() {
+  const { data, error } = await supabase.rpc('get_my_hours', { p_session_token: token });
+  if (error) {
+    // Hide the section rather than showing an error if hour tracking isn't set up in
+    // the database yet, so the rest of My List keeps working.
+    document.getElementById('hours-section').classList.add('hidden');
+    return;
+  }
+  document.getElementById('hours-section').classList.remove('hidden');
+  renderHours(data || []);
+}
+
+document.getElementById('hours-date').value = todayLocal();
+document.getElementById('hours-date').max = todayLocal();
+
+document.getElementById('log-hours-btn').addEventListener('click', async () => {
+  clearNotice();
+  const workDate = document.getElementById('hours-date').value;
+  const hours = Number(document.getElementById('hours-amount').value);
+  const note = document.getElementById('hours-note').value.trim();
+  if (!workDate) {
+    notice('Pick the day you worked.');
+    return;
+  }
+  if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+    notice('Hours should be a number between 0 and 24.');
+    return;
+  }
+  const btn = document.getElementById('log-hours-btn');
+  btn.disabled = true;
+  const { error } = await supabase.rpc('log_my_hours', {
+    p_session_token: token,
+    p_work_date: workDate,
+    p_hours: hours,
+    p_note: note,
+  });
+  btn.disabled = false;
+  if (error) {
+    notice(rpcErrorMessage(error));
+    return;
+  }
+  document.getElementById('hours-amount').value = '';
+  document.getElementById('hours-note').value = '';
+  notice(`Logged ${formatHours(hours)} — thank you!`, 'success');
+  await loadHours();
+});
+
 function contributionCardHtml(c) {
   const pending = c.pending_change;
   const removed = c.status === 'removed';
@@ -206,6 +303,7 @@ async function loadDashboard() {
 
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
+  await loadHours();
 }
 
 async function init() {

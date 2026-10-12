@@ -26,6 +26,8 @@ let dash = { wishlist_items: [], donors: [], change_requests: [] };
 let homepage = { hero_tagline: '', hero_subtagline: '', cta_text: '', sections: [] };
 let feedbackRequests = [];
 let buildStreams = [];
+let hoursEntries = [];
+let hoursLoadError = '';
 
 const loginBox = document.getElementById('login-box');
 const dashboard = document.getElementById('dashboard');
@@ -87,6 +89,7 @@ async function loadDashboard() {
   renderWishlist();
   renderHomepage();
   renderFeedback();
+  await loadHours();
 }
 
 // ---------------- Change requests ----------------
@@ -918,6 +921,167 @@ function renderFeedback() {
     } finally {
       btn.disabled = false;
     }
+  });
+}
+
+// ---------------- Build hours ----------------
+
+function formatHours(h) {
+  const n = Number(h);
+  return `${Number.isInteger(n) ? n : n.toFixed(2).replace(/0$/, '')} hr${n === 1 ? '' : 's'}`;
+}
+
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Loaded separately from the rest of the dashboard so a problem here (e.g. the
+// work_logs migration not applied yet) doesn't log the admin out of every other tab.
+async function loadHours() {
+  const { data, error } = await supabase.rpc('admin_get_hours', { p_session_token: token });
+  hoursEntries = data || [];
+  hoursLoadError = error ? rpcErrorMessage(error) : '';
+  renderHours();
+}
+
+function hoursEntryHtml(e) {
+  return `
+    <div class="hours-row" data-id="${e.id}">
+      <div style="flex:1;">
+        <div class="hours-view">
+          <strong>${escapeHtml(e.work_date)}</strong> — ${formatHours(e.hours)}
+          ${e.note ? ` · ${escapeHtml(e.note)}` : ''}
+          ${e.entered_by === 'admin' ? ' <span class="pill">added by admin</span>' : ''}
+        </div>
+        <div class="hours-edit hidden row">
+          <input type="date" class="edit-date" value="${escapeHtml(e.work_date)}" />
+          <input type="number" class="edit-hours" min="0.25" max="24" step="0.25" value="${Number(e.hours)}" />
+          <input type="text" class="edit-note" value="${escapeHtml(e.note || '')}" placeholder="Note" />
+          <button type="button" class="small" data-action="save-hours">Save</button>
+        </div>
+      </div>
+      <div style="flex-shrink:0;">
+        <button type="button" class="secondary small" data-action="edit-hours">Edit</button>
+        <button type="button" class="secondary small" data-action="delete-hours">Delete</button>
+      </div>
+    </div>`;
+}
+
+function renderHours() {
+  const el = document.getElementById('tab-hours');
+  if (hoursLoadError) {
+    el.innerHTML = `<p class="intro">Couldn't load build hours: ${escapeHtml(hoursLoadError)}</p>`;
+    return;
+  }
+
+  const byPerson = new Map();
+  for (const e of hoursEntries) {
+    if (!byPerson.has(e.donor_id)) byPerson.set(e.donor_id, { name: e.contact_name, chosen: e.chosen_name, total: 0, days: new Set(), entries: [] });
+    const p = byPerson.get(e.donor_id);
+    p.total += Number(e.hours);
+    p.days.add(e.work_date);
+    p.entries.push(e);
+  }
+  const people = [...byPerson.values()].sort((a, b) => b.total - a.total);
+  const grandTotal = people.reduce((s, p) => s + p.total, 0);
+  const donorsSorted = [...dash.donors].sort((a, b) => a.contact_name.localeCompare(b.contact_name));
+
+  el.innerHTML = `
+    <h2 class="section-title" style="margin-top:0;">Build Hours — ${formatHours(grandTotal)} from ${people.length} ${people.length === 1 ? 'person' : 'people'}</h2>
+    <p class="intro">Volunteers log their own hours on their My List page. Entries count right away; fix or remove anything that looks off here.</p>
+    <details class="card">
+      <summary style="cursor:pointer; color:var(--accent);">+ Log hours for someone</summary>
+      <div style="margin-top:10px;">
+        <div class="row">
+          <select id="admin-hours-donor">
+            ${donorsSorted.map((d) => `<option value="${d.id}">${escapeHtml(d.contact_name)} (${escapeHtml(d.chosen_name)})</option>`).join('')}
+          </select>
+          <input type="date" id="admin-hours-date" value="${todayLocal()}" />
+          <input type="number" id="admin-hours-amount" min="0.25" max="24" step="0.25" placeholder="Hours" />
+        </div>
+        <input type="text" id="admin-hours-note" placeholder="What they worked on (optional)" style="margin-top:8px;" />
+        <button type="button" id="admin-hours-add" class="small" style="margin-top:8px;">Add</button>
+      </div>
+    </details>
+    ${people.length ? `<button type="button" id="hours-csv" class="secondary small" style="margin:8px 0;">Download all as spreadsheet (CSV)</button>` : ''}
+    ${
+      people.length
+        ? people
+            .map(
+              (p) => `
+      <details class="donor-block">
+        <summary>${escapeHtml(p.name)} (${escapeHtml(p.chosen)}) — <strong>${formatHours(p.total)}</strong> over ${p.days.size} day(s)</summary>
+        <div style="margin-top:8px;">${p.entries.map(hoursEntryHtml).join('')}</div>
+      </details>`
+            )
+            .join('')
+        : '<p class="intro">No hours logged yet.</p>'
+    }`;
+
+  document.getElementById('admin-hours-add').addEventListener('click', async () => {
+    const hours = Number(document.getElementById('admin-hours-amount').value);
+    const workDate = document.getElementById('admin-hours-date').value;
+    if (!workDate || !Number.isFinite(hours) || hours <= 0 || hours > 24) {
+      notice('Pick a date and enter hours between 0 and 24.');
+      return;
+    }
+    const { error } = await supabase.rpc('admin_upsert_hours', {
+      p_session_token: token,
+      p_id: null,
+      p_donor_id: document.getElementById('admin-hours-donor').value,
+      p_work_date: workDate,
+      p_hours: hours,
+      p_note: document.getElementById('admin-hours-note').value.trim(),
+    });
+    if (error) notice(rpcErrorMessage(error));
+    else {
+      notice('Hours added.', 'success');
+      await loadHours();
+    }
+  });
+
+  document.getElementById('hours-csv')?.addEventListener('click', () => {
+    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['Name', 'Login name', 'Date', 'Hours', 'Note', 'Entered by']].concat(
+      hoursEntries.map((e) => [e.contact_name, e.chosen_name, e.work_date, Number(e.hours), e.note || '', e.entered_by])
+    );
+    const blob = new Blob([rows.map((r) => r.map(cell).join(',')).join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `erebe-build-hours-${todayLocal()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  el.querySelectorAll('.hours-row').forEach((row) => {
+    const id = row.dataset.id;
+    row.querySelector('[data-action="edit-hours"]').addEventListener('click', () => {
+      row.querySelector('.hours-view').classList.toggle('hidden');
+      row.querySelector('.hours-edit').classList.toggle('hidden');
+    });
+    row.querySelector('[data-action="save-hours"]').addEventListener('click', async () => {
+      const entry = hoursEntries.find((x) => x.id === id);
+      const { error } = await supabase.rpc('admin_upsert_hours', {
+        p_session_token: token,
+        p_id: id,
+        p_donor_id: entry.donor_id,
+        p_work_date: row.querySelector('.edit-date').value,
+        p_hours: Number(row.querySelector('.edit-hours').value),
+        p_note: row.querySelector('.edit-note').value.trim(),
+      });
+      if (error) notice(rpcErrorMessage(error));
+      else {
+        notice('Saved.', 'success');
+        await loadHours();
+      }
+    });
+    row.querySelector('[data-action="delete-hours"]').addEventListener('click', async () => {
+      if (!confirm('Delete this hours entry?')) return;
+      const { error } = await supabase.rpc('admin_delete_hours', { p_session_token: token, p_id: id });
+      if (error) notice(rpcErrorMessage(error));
+      else await loadHours();
+    });
   });
 }
 

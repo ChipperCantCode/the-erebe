@@ -60,6 +60,29 @@
       <button type="button" id="logout-btn" class="secondary small" style="margin-top:12px;">Log out</button>
     </div>
 
+    <section id="hours-section">
+    <h2 class="section-title">Your Build Hours</h2>
+    <div class="card">
+      <p class="intro" style="margin-top:0;">Log the time you put in on the build so you get credit for it — now and on future builds.</p>
+      <div class="row">
+        <div class="field-group">
+          <label class="field" for="hours-date">Day you worked</label>
+          <input id="hours-date" type="date" />
+        </div>
+        <div class="field-group">
+          <label class="field" for="hours-amount">Hours</label>
+          <input id="hours-amount" type="number" inputmode="decimal" min="0.25" max="24" step="0.25" placeholder="e.g. 6" />
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field" for="hours-note">What did you work on? (optional)</label>
+        <input id="hours-note" type="text" placeholder="e.g. framing the north spire" />
+      </div>
+      <button type="button" id="log-hours-btn" class="small">Log hours</button>
+      <div id="hours-list" style="margin-top:14px;"></div>
+    </div>
+    </section>
+
     <h2 class="section-title">Your Contributions</h2>
     <div id="contrib-list"></div>
 
