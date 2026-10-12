@@ -250,6 +250,9 @@ export function rpcErrorMessage(err) {
     passcode_too_short: 'Passcode should be at least 3 characters.',
     contact_name_required: 'Please enter your name.',
     email_required: 'Please enter your email address.',
+    work_date_required: 'Pick the day you worked.',
+    work_date_in_future: 'That date is in the future — log hours after you’ve worked them.',
+    hours_out_of_range: 'Hours should be a number between 0 and 24.',
     item_has_contributions: 'This item has contributions logged against it — remove those first, or archive the item instead.',
   };
   for (const key of Object.keys(known)) {

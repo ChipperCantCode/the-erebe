@@ -28,7 +28,9 @@ at https://chippercantcode.github.io/the-erebe/)
   self-service password reset (no email-sending infra, and a real reset flow would
   work against the whole point of avoiding a real auth system) — if a donor forgets
   their passcode, an admin resets it for them from the Donors tab and relays the new
-  one directly.
+  one directly. **Your Build Hours** lets anyone with a login log the days and hours
+  they worked on the build (plus an optional note), so crew get credit now and on
+  future builds without Inani tracking it for them. Entries count immediately.
 - `admin.html` — shared admin view for Inani and the lead artist. Login is name `admin`,
   passcode `5555` (fixed, per the original request). Approve/deny donor change requests,
   edit any donor's contributions, reset a donor's passcode, edit the master wish list
@@ -40,7 +42,8 @@ at https://chippercantcode.github.io/the-erebe/)
   (Inani goes live on Facebook roughly monthly to draw/plan) — the newest shows as a real
   embed on the homepage, older ones list underneath as a dated archive. No code changes
   needed for Inani to update the front page himself, add a new stream, or retire an old
-  one. The **Feedback** tab shows the history of everything submitted through the public
+  one. The **Build Hours** tab shows total hours per person, lets an admin log, edit,
+  or delete hours for anyone, and downloads everything as a CSV spreadsheet. The **Feedback** tab shows the history of everything submitted through the public
   feedback form (see below) and can also submit directly.
 - `feedback.html` — public, no login needed. Anyone can leave a bug report or feature
   request; it's published as a GitHub issue on this repo automatically, so Chipper gets
