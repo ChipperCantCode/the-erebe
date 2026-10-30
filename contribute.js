@@ -569,6 +569,14 @@ async function init() {
   renderSelectedItems();
   renderFullPicker();
 
+  // Nothing picked yet (e.g. arrived via "Sign Up to Help"): show the full list instead of
+  // hiding the only way forward behind a collapsed link.
+  if (Object.keys(selected).length === 0) {
+    const picker = document.getElementById('full-picker-details');
+    picker.open = true;
+    picker.querySelector('summary').textContent = "Pick what you'd like to help with";
+  }
+
   if (donorToken) {
     try {
       await loadDonorInfo();

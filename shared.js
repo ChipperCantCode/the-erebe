@@ -121,6 +121,7 @@ export function formatQuantityDisplay(n, unit) {
   if (unit === '%') {
     return formatQuantity(num) + '%';
   }
+  if (unit === 'people' && num === 1) return '1 person';
   return formatQuantity(num) + (unit ? ' ' + unit : '');
 }
 
