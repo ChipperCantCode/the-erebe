@@ -152,23 +152,20 @@ export function formatDate(dateStr) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// ---------- build window + crew location (shared across contribute/my-list/admin) ----------
-export const BUILD_START_DATE = '2026-09-16';
-export const BUILD_END_DATE = '2026-10-07';
-export const BUILD_WINDOW_LABEL = 'Sept 16 – Oct 7, 2026';
-
+// ---------- crew location (shared across contribute/my-list/admin) ----------
+// Stored values (colab, event_site, both, remote) are fixed by the database; only the labels change.
 export const CREW_LOCATION_OPTIONS = [
   ['', 'N/A / not sure yet'],
   ['remote', "Remote — not physically on-site"],
-  ['colab', 'CoLab (prefab shop)'],
-  ['event_site', 'Event site (main build)'],
-  ['both', 'Both CoLab and event site'],
+  ['colab', 'Before the event (upgrades and repairs)'],
+  ['event_site', 'On playa at Black Rock City'],
+  ['both', 'Both'],
 ];
 export const CREW_LOCATION_LABELS = {
   remote: 'Remote — not physically on-site',
-  colab: 'CoLab (prefab shop)',
-  event_site: 'Event site (main build)',
-  both: 'Both CoLab and event site',
+  colab: 'Before the event (upgrades and repairs)',
+  event_site: 'On playa at Black Rock City',
+  both: 'Both',
 };
 
 // ---------- rich text: strict allowlist sanitizer for admin-authored homepage copy ----------

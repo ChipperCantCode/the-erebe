@@ -55,7 +55,9 @@ document.getElementById('fb-submit-btn').addEventListener('click', async () => {
     }
 
     document.getElementById('feedback-form').innerHTML = `
-      <p style="margin:0;">Thank you! This is now <a href="${escapeHtml(data.issue_url)}" target="_blank" rel="noopener noreferrer">issue #${data.issue_number}</a> on the project's GitHub.</p>`;
+      <p style="margin:0 0 12px;">Thank you! This is now <a href="${escapeHtml(data.issue_url)}" target="_blank" rel="noopener noreferrer">issue #${data.issue_number}</a> on the project's GitHub.</p>
+      <button type="button" id="fb-another-btn">Submit another</button>`;
+    document.getElementById('fb-another-btn').addEventListener('click', () => window.location.reload());
   } finally {
     btn.disabled = false;
   }
