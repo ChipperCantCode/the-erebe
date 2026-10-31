@@ -249,7 +249,24 @@ export function rpcErrorMessage(err) {
     contact_name_required: 'Please enter your name.',
     email_required: 'Please enter your email address.',
     item_has_contributions: 'This item has contributions logged against it — remove those first, or archive the item instead.',
+    claim_not_found: 'That claim link has already been used or isn’t valid anymore.',
+    date_required: 'Pick the date you worked.',
+    date_in_future: 'That date hasn’t happened yet.',
+    times_required: 'Add your start and end times.',
+    invalid_hours: 'Hours must be more than 0 and no more than 24.',
+    role_required: 'Pick what you worked on, or write it in.',
+    invalid_role: 'That role isn’t on the volunteer list anymore — pick another or write it in.',
+    not_signed_up_for_shift: 'You’re not signed up for that shift — sign up for it first, or log the hours without it.',
+    hours_not_found: 'That entry doesn’t exist anymore — refresh the page.',
+    shift_not_found: 'That shift doesn’t exist anymore — refresh the page.',
+    shift_in_past: 'That shift has already happened.',
+    shift_title_required: 'Give the shift a title or pick a role.',
+    shift_times_required: 'A shift needs a date, start time, and end time.',
+    donor_not_found: 'That person doesn’t exist anymore — refresh the page.',
   };
+  // exact match first — several codes end in "not_found", so a substring match alone
+  // would give them all the generic "no donor by that name" message
+  if (known[code]) return known[code];
   for (const key of Object.keys(known)) {
     if (code.includes(key)) return known[key];
   }

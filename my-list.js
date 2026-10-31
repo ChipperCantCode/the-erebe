@@ -10,7 +10,9 @@ import {
   escapeHtml,
   rpcErrorMessage,
   CREW_LOCATION_LABELS,
+  formatDate,
 } from './shared.js';
+import { hourFormHtml, wireHourForm, hourEntryHtml, formatHours, formatTimeRange, todayLocal } from './hours.js';
 
 const noticeArea = document.getElementById('notice-area');
 function notice(msg, kind = 'error') {
@@ -22,6 +24,13 @@ function clearNotice() {
 
 let token = getDonorToken();
 let contributions = [];
+let hoursCtx = { my_roles: [], all_roles: [], shifts: [], logs: [] };
+let donorInfo = null;
+
+const params = new URLSearchParams(location.search);
+let claimCode = params.get('claim');
+const highlightShiftId = params.get('shift');
+let highlightedOnce = false;
 
 const loginBox = document.getElementById('login-box');
 const dashboard = document.getElementById('dashboard');
@@ -42,6 +51,25 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   token = data;
   setDonorToken(token);
   await loadDashboard();
+  await renderClaim();
+});
+
+document.getElementById('register-btn').addEventListener('click', async () => {
+  clearNotice();
+  const { data, error } = await supabase.rpc('donor_register', {
+    p_chosen_name: document.getElementById('rg-chosen-name').value.trim(),
+    p_passcode: document.getElementById('rg-passcode').value,
+    p_contact_name: document.getElementById('rg-contact-name').value.trim(),
+    p_email: document.getElementById('rg-email').value.trim(),
+  });
+  if (error) {
+    notice(rpcErrorMessage(error));
+    return;
+  }
+  token = data;
+  setDonorToken(token);
+  await loadDashboard();
+  await renderClaim();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => {
@@ -167,15 +195,214 @@ function wireContributionCard(el, c) {
   });
 }
 
+// ---------------- Hours ----------------
+
+function renderHours() {
+  const signedUpShifts = hoursCtx.shifts.filter((s) => s.signed_up);
+  const formOpts = {
+    myRoles: hoursCtx.my_roles,
+    allRoles: hoursCtx.all_roles,
+    shifts: signedUpShifts,
+    isAdmin: false,
+  };
+  const wrap = document.getElementById('hour-form-wrap');
+  wrap.innerHTML = hourFormHtml(formOpts);
+  const form = wireHourForm(wrap, formOpts);
+
+  wrap.querySelector('.hf-save').addEventListener('click', async () => {
+    clearNotice();
+    const result = form.read();
+    if (!result.ok) {
+      notice(result.error);
+      return;
+    }
+    const { p_donor_id, ...values } = result.values;
+    const { error } = await supabase.rpc('donor_save_hours', {
+      p_session_token: token,
+      p_id: form.editingId,
+      ...values,
+    });
+    if (error) {
+      notice(rpcErrorMessage(error));
+      return;
+    }
+    const wasEdit = !!form.editingId;
+    await loadDashboard();
+    notice(wasEdit ? 'Updated.' : `Logged ${formatHours(values.p_hours)} — thank you!`, 'success');
+  });
+
+  const total = hoursCtx.logs.reduce((sum, l) => sum + Number(l.hours), 0);
+  document.getElementById('hours-total').textContent = hoursCtx.logs.length ? `— ${formatHours(total)} total` : '';
+
+  const list = document.getElementById('hours-list');
+  list.innerHTML = hoursCtx.logs.length
+    ? `<div class="card">${hoursCtx.logs.map((l) => hourEntryHtml(l)).join('')}</div>`
+    : '<p class="intro">Nothing logged yet.</p>';
+
+  list.querySelectorAll('.hour-entry').forEach((row) => {
+    const entry = hoursCtx.logs.find((l) => l.id === row.dataset.id);
+    row.querySelector('[data-action="edit-hours"]').addEventListener('click', () => form.load(entry));
+    row.querySelector('[data-action="delete-hours"]').addEventListener('click', async () => {
+      if (!confirm('Delete this entry?')) return;
+      const { error } = await supabase.rpc('donor_delete_hours', { p_session_token: token, p_id: entry.id });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      await loadDashboard();
+    });
+  });
+}
+
+// ---------------- Shifts ----------------
+
+function shiftCardHtml(s) {
+  const bits = [formatDate(s.shift_date), formatTimeRange(s.start_time, s.end_time)];
+  if (s.location) bits.push(s.location);
+  return `
+    <div class="card shift-card${s.id === highlightShiftId ? ' highlight' : ''}" data-id="${s.id}">
+      <div class="item-head">
+        <div class="item-name">${escapeHtml(s.title)}</div>
+        ${s.signed_up ? '<span class="pill approved">You’re signed up</span>' : ''}
+      </div>
+      <div class="item-desc">${escapeHtml(bits.join(' · '))}</div>
+      ${s.role_name && s.role_name !== s.title ? `<div class="item-desc">Role: ${escapeHtml(s.role_name)}</div>` : ''}
+      ${s.description ? `<div class="item-desc">${escapeHtml(s.description)}</div>` : ''}
+      <div class="item-desc">${s.signup_count} signed up</div>
+      <div style="margin-top:8px;">
+        ${
+          s.signed_up
+            ? '<button type="button" class="secondary small" data-action="leave-shift">I can’t make it</button>'
+            : '<button type="button" class="small" data-action="join-shift">Sign up for this shift</button>'
+        }
+      </div>
+    </div>`;
+}
+
+function renderShifts() {
+  const upcoming = hoursCtx.shifts.filter((s) => s.shift_date >= todayLocal());
+  const el = document.getElementById('shift-list');
+  el.innerHTML = upcoming.length ? upcoming.map(shiftCardHtml).join('') : '<p class="intro">No upcoming shifts posted right now.</p>';
+
+  el.querySelectorAll('.shift-card').forEach((card) => {
+    const setSignup = async (signedUp) => {
+      const { error } = await supabase.rpc('donor_set_shift_signup', {
+        p_session_token: token,
+        p_shift_id: card.dataset.id,
+        p_signed_up: signedUp,
+      });
+      if (error) {
+        notice(rpcErrorMessage(error));
+        return;
+      }
+      await loadDashboard();
+      notice(signedUp ? 'You’re signed up — see you there!' : 'Taken off that shift.', 'success');
+    };
+    card.querySelector('[data-action="join-shift"]')?.addEventListener('click', () => setSignup(true));
+    card.querySelector('[data-action="leave-shift"]')?.addEventListener('click', () => setSignup(false));
+  });
+
+  if (highlightShiftId && !highlightedOnce) {
+    highlightedOnce = true;
+    el.querySelector('.shift-card.highlight')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// ---------------- Claiming an account Inani set up ----------------
+
+function dropClaimFromUrl() {
+  claimCode = null;
+  params.delete('claim');
+  const qs = params.toString();
+  history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+  document.getElementById('claim-box').classList.add('hidden');
+}
+
+async function renderClaim() {
+  const box = document.getElementById('claim-box');
+  if (!claimCode) {
+    box.classList.add('hidden');
+    return;
+  }
+  const { data, error } = await supabase.rpc('get_claim_info', { p_code: claimCode });
+  if (error) {
+    notice('That claim link has already been used or isn’t valid anymore. If you already claimed it, just log in.');
+    dropClaimFromUrl();
+    return;
+  }
+  document.getElementById('claim-summary').textContent =
+    Number(data.entries) > 0
+      ? `Inani logged ${formatHours(data.hours)} for ${data.name} (${data.entries} ${data.entries === 1 ? 'entry' : 'entries'}).`
+      : `Inani set up an account for ${data.name}.`;
+
+  const signedIn = !!(token && donorInfo);
+  document.getElementById('claim-signed-in').classList.toggle('hidden', !signedIn);
+  document.getElementById('claim-new').classList.toggle('hidden', signedIn);
+  if (signedIn) {
+    document.getElementById('claim-signed-in-name').textContent = donorInfo.chosen_name;
+  } else {
+    const nameInput = document.getElementById('cl-contact-name');
+    const emailInput = document.getElementById('cl-email');
+    if (!nameInput.value) nameInput.value = data.name || '';
+    if (!emailInput.value) emailInput.value = data.email || '';
+  }
+  box.classList.remove('hidden');
+}
+
+document.getElementById('claim-login-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('li-chosen-name').focus();
+});
+
+document.getElementById('claim-switch-btn').addEventListener('click', () => {
+  clearDonorToken();
+  location.reload();
+});
+
+document.getElementById('claim-merge-btn').addEventListener('click', async () => {
+  const { error } = await supabase.rpc('claim_into_account', { p_session_token: token, p_code: claimCode });
+  if (error) {
+    notice(rpcErrorMessage(error));
+    return;
+  }
+  dropClaimFromUrl();
+  await loadDashboard();
+  notice('Done — those hours are on your account now.', 'success');
+});
+
+document.getElementById('claim-create-btn').addEventListener('click', async () => {
+  clearNotice();
+  const { data, error } = await supabase.rpc('claim_account', {
+    p_code: claimCode,
+    p_chosen_name: document.getElementById('cl-chosen-name').value.trim(),
+    p_passcode: document.getElementById('cl-passcode').value,
+    p_contact_name: document.getElementById('cl-contact-name').value.trim(),
+    p_email: document.getElementById('cl-email').value.trim(),
+  });
+  if (error) {
+    notice(rpcErrorMessage(error));
+    return;
+  }
+  token = data;
+  setDonorToken(token);
+  dropClaimFromUrl();
+  await loadDashboard();
+  notice('Your account is ready — welcome to the crew.', 'success');
+});
+
+// ---------------- Dashboard ----------------
+
 async function loadDashboard() {
   clearNotice();
-  const [{ data: info, error: infoErr }, { data: contribs, error: contribErr }] = await Promise.all([
+  const [{ data: info, error: infoErr }, { data: contribs, error: contribErr }, { data: hCtx, error: hErr }] = await Promise.all([
     supabase.rpc('get_my_donor_info', { p_session_token: token }),
     supabase.rpc('get_my_contributions', { p_session_token: token }),
+    supabase.rpc('donor_get_hours_context', { p_session_token: token }),
   ]);
 
-  if (infoErr || contribErr) {
-    notice(rpcErrorMessage(infoErr || contribErr));
+  if (infoErr || contribErr || hErr) {
+    notice(rpcErrorMessage(infoErr || contribErr || hErr));
+    donorInfo = null;
     clearDonorToken();
     token = '';
     loginBox.classList.remove('hidden');
@@ -184,6 +411,10 @@ async function loadDashboard() {
   }
 
   const donor = Array.isArray(info) ? info[0] : info;
+  donorInfo = donor;
+  hoursCtx = hCtx;
+  renderHours();
+  renderShifts();
   document.getElementById('contact-name').value = donor.contact_name || '';
   document.getElementById('contact-email').value = donor.email || '';
   document.getElementById('anon-toggle').checked = !!donor.is_anonymous;
@@ -211,9 +442,11 @@ async function loadDashboard() {
 async function init() {
   if (!token) {
     loginBox.classList.remove('hidden');
-    return;
+    if (highlightShiftId) notice('Log in (or create an account below) to sign up for that shift.', 'info');
+  } else {
+    await loadDashboard();
   }
-  await loadDashboard();
+  await renderClaim();
 }
 
 init();
