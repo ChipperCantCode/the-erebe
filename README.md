@@ -137,7 +137,13 @@ Tables (all locked down: RLS on, no grants — reachable only through the RPCs):
 - `portfolio_photos` — `project_id`, `storage_path` (the ~2000px "full" copy),
   `display_path` (~1200px copy used on the page), `width`/`height`, `fit`
   (`normal` / `enlarge` / `pad` — see below), `caption`, `sort_order`.
-- `portfolio_page` — single row: `intro_quote`, `footer_html` (credits).
+- `portfolio_page` — single row: `intro_quote`, `intro_attribution` (the "— Inani"
+  line; blank for none), `footer_html` (credits). Edited in place on the portfolio page
+  (✎ on the quote and on the credits) or from Admin → Portfolio, both through
+  `admin_save_portfolio_page`. (`admin_update_portfolio_page` is the older version without
+  the attribution; it's unused and kept only so no live function had to be dropped.)
+- `portfolio_page_versions` — edit history for the quote/credits, filled by a trigger
+  before every change, just like the pieces' history.
 - `portfolio_project_versions` — **edit history.** A trigger snapshots a piece's row
   every time it's saved or deleted (deletes also keep a list of its photos), so the
   text of any earlier version can be brought back from the editor's **History** button.
@@ -146,12 +152,14 @@ Tables (all locked down: RLS on, no grants — reachable only through the RPCs):
 project with `date_label` ("Feb 2024", or `year_label` when set) and its `photos`.
 `admin_get_portfolio(token)` returns the same plus archived pieces and the raw fields.
 
-**Inline editing** (`portfolio.js`): one piece at a time. Tapping ✎ on a second piece,
+**Inline editing** (`portfolio.js`): one thing at a time — a piece, the intro quote, or
+the credits. Tapping ✎ on a second piece,
 clicking a link off the page, or pressing Cancel while there are unsaved changes shows a
 *Save / Discard / Keep editing* prompt; closing or reloading the tab shows the browser's
 own "Leave site?" warning (browsers don't allow a custom one there). Text fields save with
 the Save button. Photo uploads, replacements, deletions, and reordering save immediately.
-**Delete piece** asks for confirmation and offers **Archive** instead (archive is
+The editor's bottom bar is **Save**, **Cancel & revert**, and a **⋯** menu with
+History, Archive, and Delete. **Delete piece** asks for confirmation and offers **Archive** instead (archive is
 reversible, delete removes the photos for good).
 
 **Photos** are resized in the browser before upload (`media.js`: ~2000px long edge for

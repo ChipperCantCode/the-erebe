@@ -1022,3 +1022,13 @@ body.pf-editing .pf-index-toggle { display: none; }
   .photo-frame img, .photo-frame:hover img { transition: none; transform: none; }
   .lightbox, .pf-index-panel { animation: none; }
 }
+
+/* intro quote + credits: positioned so their ✎ sits top-right, like the pieces */
+.pf-page-part { position: relative; }
+.pf-page-part > .pf-edit-btn { top: 0; }
+#pf-intro-block { max-width: 680px; margin: 0 auto; padding: 0 48px; }
+#pf-intro-block.is-editing, .pf-credits.is-editing { padding: 0; text-align: left; }
+.pf-empty-part { text-align: center; padding: 10px 0; }
+.pf-quote-input { font-style: italic; font-size: 1.1rem; line-height: 1.55; }
+.pf-title-input { font-size: 1.5rem; padding: 10px 12px; }
+.pf-more-btn { margin-left: auto; min-width: 48px; font-size: 1.2rem; line-height: 1; letter-spacing: 0.05em; }

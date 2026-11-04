@@ -925,8 +925,9 @@ function renderPortfolio() {
   el.innerHTML = `
     <h2 class="section-title" style="margin-top:0;">Portfolio</h2>
     <p class="intro">
-      To edit a piece's text, dates, or photos, open the <a href="portfolio.html">portfolio page</a> while logged in here.
-      Each piece gets a ✎ button in its top-right corner. Every save is kept in that piece's edit history.
+      Everything on the <a href="portfolio.html">portfolio page</a> can be edited right there while you're logged in here:
+      each piece, the intro quote, and the credits get a ✎ button in their top-right corner, and every save is kept in an edit history.
+      The intro and credits can also be edited below.
     </p>
 
     <div class="card">
@@ -934,6 +935,10 @@ function renderPortfolio() {
       <div class="field-group">
         <label class="field">Intro quote (shown at the top, attributed to Inani)</label>
         <textarea id="pf-intro-quote" rows="3">${escapeHtml(page.intro_quote || '')}</textarea>
+      </div>
+      <div class="field-group">
+        <label class="field">Quote attributed to (leave blank for none)</label>
+        <input type="text" id="pf-intro-attribution" value="${escapeHtml(page.intro_attribution || '')}" />
       </div>
       <label class="field">Credits footer (shown at the bottom of the page)</label>
       ${richTextEditorHtml(sanitizeRichText(page.footer_html || ''))}
@@ -979,9 +984,10 @@ function renderPortfolio() {
   wireRichTextEditor(footerRte);
 
   document.getElementById('pf-save-page').addEventListener('click', async () => {
-    const { error } = await supabase.rpc('admin_update_portfolio_page', {
+    const { error } = await supabase.rpc('admin_save_portfolio_page', {
       p_session_token: token,
       p_intro_quote: document.getElementById('pf-intro-quote').value.trim(),
+      p_intro_attribution: document.getElementById('pf-intro-attribution').value.trim(),
       p_footer_html: sanitizeRichText(footerRte.querySelector('.rte-editable').innerHTML),
     });
     if (error) return notice(rpcErrorMessage(error));

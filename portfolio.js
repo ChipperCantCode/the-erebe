@@ -133,18 +133,49 @@ function pieceViewHtml(p) {
     </div>`;
 }
 
-function renderAll() {
-  const page = data.page || {};
-  const quoteEl = document.getElementById('pf-quote');
-  quoteEl.innerHTML = page.intro_quote
-    ? `<p>${escapeHtml(page.intro_quote)}</p><cite>— Inani</cite>`
-    : '';
-  quoteEl.classList.toggle('hidden', !page.intro_quote);
+// The intro quote and the credits footer behave like pieces for admins: a ✎ button,
+// inline editing, the same unsaved-changes prompts, and their own edit history.
+const PAGE_PARTS = {
+  intro: { elId: 'pf-intro-block', label: 'the intro quote' },
+  credits: { elId: 'pf-credits', label: 'the credits' },
+};
 
-  const credits = document.getElementById('pf-credits');
-  credits.innerHTML = page.footer_html
-    ? `<h2 class="pf-section-heading">Credits</h2><div class="pf-credits-body">${sanitizeRichText(page.footer_html)}</div>`
+function pageEditBtn(part) {
+  return isAdmin
+    ? `<button type="button" class="pf-edit-btn" data-page-edit="${part}" title="Edit ${PAGE_PARTS[part].label}" aria-label="Edit ${PAGE_PARTS[part].label}">✎</button>`
     : '';
+}
+
+function introViewHtml() {
+  const page = data.page || {};
+  if (!page.intro_quote) {
+    return isAdmin ? `${pageEditBtn('intro')}<p class="hint pf-empty-part">No intro quote yet. Tap ✎ to add one.</p>` : '';
+  }
+  return `${pageEditBtn('intro')}
+    <blockquote class="pf-quote">
+      <p>${escapeHtml(page.intro_quote)}</p>
+      ${page.intro_attribution ? `<cite>— ${escapeHtml(page.intro_attribution)}</cite>` : ''}
+    </blockquote>`;
+}
+
+function creditsViewHtml() {
+  const page = data.page || {};
+  if (!page.footer_html) {
+    return isAdmin ? `${pageEditBtn('credits')}<p class="hint pf-empty-part">No credits yet. Tap ✎ to add them.</p>` : '';
+  }
+  return `${pageEditBtn('credits')}<h2 class="pf-section-heading">Credits</h2><div class="pf-credits-body">${sanitizeRichText(page.footer_html)}</div>`;
+}
+
+function renderPagePart(part) {
+  const el = document.getElementById(PAGE_PARTS[part].elId);
+  el.classList.remove('is-editing');
+  el.innerHTML = part === 'intro' ? introViewHtml() : creditsViewHtml();
+  el.querySelector('[data-page-edit]')?.addEventListener('click', () => requestEdit('page:' + part));
+}
+
+function renderAll() {
+  renderPagePart('intro');
+  renderPagePart('credits');
 
   const projects = data.projects || [];
   if (!projects.length) {
@@ -304,13 +335,9 @@ function photoManagerHtml() {
 function editFormHtml(p) {
   return `
     <div class="pf-editor">
-      <div class="pf-editor-head">
-        <strong>Editing</strong>
-        <span class="hint">Remember to save before you leave this piece.</span>
-      </div>
+      <div class="pf-editor-head"><strong>Editing</strong></div>
       <div class="field-group">
-        <label class="field">Title</label>
-        <input type="text" class="ed-title" value="${escapeHtml(p.title)}" />
+        <input type="text" class="ed-title pf-title-input" value="${escapeHtml(p.title)}" placeholder="Title" aria-label="Title" />
       </div>
       <div class="row">
         <div class="field-group">
@@ -361,15 +388,26 @@ function editFormHtml(p) {
       <div class="pf-editor-actions">
         <button type="button" data-ed="save">Save</button>
         <button type="button" class="secondary" data-ed="cancel">Cancel &amp; revert</button>
-        <button type="button" class="secondary" data-ed="history">History${p.version_count ? ` (${p.version_count})` : ''}</button>
-        <button type="button" class="secondary" data-ed="archive">${p.archived ? 'Unarchive (show publicly)' : 'Archive (hide)'}</button>
-        <button type="button" class="danger" data-ed="delete">Delete piece</button>
+        <button type="button" class="secondary pf-more-btn" data-ed="more" aria-label="More: history, archive, delete" title="History, archive, delete">⋯</button>
       </div>
     </div>`;
 }
 
+function pagePartOf(id) {
+  return typeof id === 'string' && id.startsWith('page:') ? id.slice(5) : null;
+}
+
 function editorEl() {
-  return editing ? listEl.querySelector(`.pf-piece[data-id="${editing.id}"]`) : null;
+  if (!editing) return null;
+  const part = pagePartOf(editing.id);
+  if (part) return document.getElementById(PAGE_PARTS[part].elId);
+  return listEl.querySelector(`.pf-piece[data-id="${editing.id}"]`);
+}
+
+function editingLabel() {
+  const part = editing && pagePartOf(editing.id);
+  if (part) return PAGE_PARTS[part].label;
+  return projectById(editing?.id)?.title || 'this piece';
 }
 
 // Everything the Save button would send, as a string -- compared against the state at
@@ -378,6 +416,13 @@ function serializeEditor() {
   const el = editorEl();
   if (!el) return '';
   const v = (sel) => el.querySelector(sel)?.value ?? '';
+  if (pagePartOf(editing.id)) {
+    return JSON.stringify({
+      quote: v('.pg-quote'),
+      attribution: v('.pg-attribution'),
+      credits: el.querySelector('.rte-editable')?.innerHTML ?? '',
+    });
+  }
   return JSON.stringify({
     title: v('.ed-title'),
     month: v('.ed-month'),
@@ -404,17 +449,16 @@ function isDirty() {
 // (saved successfully, or discarded), false to stay put.
 async function resolveUnsaved(proceedLabel) {
   if (!isDirty()) return true;
-  const p = projectById(editing.id);
   const choice = await choose({
     title: 'Save your changes?',
-    html: `<p>You have unsaved changes to <strong>${escapeHtml(p?.title || 'this piece')}</strong>.</p>`,
+    html: `<p>You have unsaved changes to <strong>${escapeHtml(editingLabel())}</strong>.</p>`,
     choices: [
       { label: `Save & ${proceedLabel}`, value: 'save' },
       { label: 'Discard changes', value: 'discard', kind: 'danger' },
       { label: 'Keep editing', value: null, kind: 'secondary' },
     ],
   });
-  if (choice === 'save') return await saveEditor({ stayOpen: false });
+  if (choice === 'save') return pagePartOf(editing.id) ? await savePageEditor() : await saveEditor({ stayOpen: false });
   if (choice === 'discard') return true;
   return false;
 }
@@ -429,7 +473,9 @@ async function requestEdit(id) {
     }
     closeEditor();
   }
-  openEditor(id);
+  const part = pagePartOf(id);
+  if (part) openPageEditor(part);
+  else openEditor(id);
 }
 
 function openEditor(id) {
@@ -449,6 +495,13 @@ function openEditor(id) {
 
 function closeEditor() {
   if (!editing) return;
+  const part = pagePartOf(editing.id);
+  if (part) {
+    editing = null;
+    document.body.classList.remove('pf-editing');
+    renderPagePart(part);
+    return;
+  }
   const p = projectById(editing.id);
   const el = editorEl();
   editing = null;
@@ -475,9 +528,21 @@ function wireEditor(el) {
       return;
     closeEditor();
   });
-  el.querySelector('[data-ed="history"]').addEventListener('click', showHistory);
-  el.querySelector('[data-ed="archive"]').addEventListener('click', toggleArchive);
-  el.querySelector('[data-ed="delete"]').addEventListener('click', deletePiece);
+  el.querySelector('[data-ed="more"]').addEventListener('click', async () => {
+    const p = projectById(editing.id);
+    const pick = await choose({
+      title: p.title,
+      choices: [
+        { label: `History${p.version_count ? ` (${p.version_count} earlier version${p.version_count === 1 ? '' : 's'})` : ''}`, value: 'history', kind: 'secondary' },
+        { label: p.archived ? 'Unarchive (show publicly)' : 'Archive (hide from public)', value: 'archive', kind: 'secondary' },
+        { label: 'Delete piece…', value: 'delete', kind: 'danger' },
+        { label: 'Close', value: null, kind: 'secondary' },
+      ],
+    });
+    if (pick === 'history') showHistory();
+    else if (pick === 'archive') toggleArchive();
+    else if (pick === 'delete') deletePiece();
+  });
   wirePhotoManager(el);
 }
 
@@ -805,6 +870,124 @@ async function showHistory() {
   set('.ed-slug', s.slug);
   set('.ed-sort', s.sort_order);
   el.querySelector('.rte-editable').innerHTML = sanitizeRichText(s.body_html || '');
+  notice('Loaded an earlier version into the editor. Press Save to keep it, or Cancel to discard.', 'info');
+}
+
+// ---------------- admin: intro quote + credits editing ----------------
+
+function pageEditorHtml(part) {
+  const page = data.page || {};
+  const body =
+    part === 'intro'
+      ? `<div class="field-group">
+          <textarea class="pg-quote pf-quote-input" rows="4" maxlength="1000" placeholder="The quote" aria-label="Intro quote">${escapeHtml(page.intro_quote || '')}</textarea>
+        </div>
+        <div class="field-group">
+          <label class="field">Attributed to (leave blank for none)</label>
+          <input type="text" class="pg-attribution" maxlength="120" value="${escapeHtml(page.intro_attribution || '')}" placeholder="e.g. Inani" />
+        </div>`
+      : `${richTextEditorHtml(sanitizeRichText(page.footer_html || ''))}`;
+  return `
+    <div class="pf-editor">
+      <div class="pf-editor-head"><strong>Editing ${PAGE_PARTS[part].label}</strong></div>
+      ${body}
+      <div class="pf-editor-actions">
+        <button type="button" data-ed="save">Save</button>
+        <button type="button" class="secondary" data-ed="cancel">Cancel &amp; revert</button>
+        <button type="button" class="secondary pf-more-btn" data-ed="history" aria-label="History" title="History${page.version_count ? ` (${page.version_count})` : ''}">⋯</button>
+      </div>
+    </div>`;
+}
+
+function openPageEditor(part) {
+  clearNotice();
+  editing = { id: 'page:' + part, initial: '' };
+  const el = document.getElementById(PAGE_PARTS[part].elId);
+  el.classList.add('is-editing');
+  document.body.classList.add('pf-editing');
+  el.innerHTML = pageEditorHtml(part);
+  const rte = el.querySelector('.rte');
+  if (rte) wireRichTextEditor(rte);
+  el.querySelector('[data-ed="save"]').addEventListener('click', () => savePageEditor());
+  el.querySelector('[data-ed="cancel"]').addEventListener('click', async () => {
+    if (isDirty() && !(await confirmDialog('Discard your changes?', `<p>Your edits to ${PAGE_PARTS[part].label} will be thrown away.</p>`, 'Discard changes', true)))
+      return;
+    closeEditor();
+  });
+  el.querySelector('[data-ed="history"]').addEventListener('click', () => showPageHistory(part));
+  editing.initial = serializeEditor();
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.querySelector('textarea, .rte-editable')?.focus();
+}
+
+// Saves the whole page row: the part being edited from the form, the other from data.
+async function savePageEditor() {
+  const part = pagePartOf(editing?.id);
+  const el = editorEl();
+  if (!part || !el) return true;
+  const page = data.page || {};
+  const btn = el.querySelector('[data-ed="save"]');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const { error } = await supabase.rpc('admin_save_portfolio_page', {
+      p_session_token: adminToken,
+      p_intro_quote: part === 'intro' ? el.querySelector('.pg-quote').value.trim() : page.intro_quote || '',
+      p_intro_attribution: part === 'intro' ? el.querySelector('.pg-attribution').value.trim() : page.intro_attribution || '',
+      p_footer_html: part === 'credits' ? sanitizeRichText(el.querySelector('.rte-editable').innerHTML) : page.footer_html || '',
+    });
+    if (error) {
+      notice(rpcErrorMessage(error));
+      return false;
+    }
+    editing = null;
+    await reloadAndRender();
+    notice('Saved.', 'success');
+    return true;
+  } finally {
+    if (btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = 'Save';
+    }
+  }
+}
+
+async function showPageHistory(part) {
+  const { data: versions, error } = await supabase.rpc('admin_get_portfolio_page_versions', { p_session_token: adminToken });
+  if (error) return notice(rpcErrorMessage(error));
+  if (!versions?.length) {
+    await choose({ title: 'No history yet', html: '<p>Earlier versions appear here each time the intro or credits are saved.</p>', choices: [{ label: 'OK', value: null }] });
+    return;
+  }
+  const textOf = (html) => {
+    const t = document.createElement('template');
+    t.innerHTML = sanitizeRichText(html || '');
+    return (t.content.textContent || '').replace(/\s+/g, ' ').trim();
+  };
+  const preview = (v) =>
+    part === 'intro'
+      ? `“${v.snapshot.intro_quote || '(no quote)'}”${v.snapshot.intro_attribution ? ' — ' + v.snapshot.intro_attribution : ''}`
+      : textOf(v.snapshot.footer_html) || '(no credits)';
+  const list = versions.slice(0, 15);
+  const choices = list.map((v, i) => ({ label: `Load ${new Date(v.changed_at).toLocaleString()}`, value: i, kind: 'secondary' }));
+  choices.push({ label: 'Close', value: null });
+  const pick = await choose({
+    title: `Earlier versions of ${PAGE_PARTS[part].label}`,
+    html: `<p>Each entry is how it looked <em>before</em> a save. Loading one puts it in the editor. Nothing changes until you press Save.</p>
+      <ul class="pf-history-list">${list
+        .map((v) => `<li><strong>${new Date(v.changed_at).toLocaleString()}</strong>: ${escapeHtml(preview(v).slice(0, 160))}</li>`)
+        .join('')}</ul>`,
+    choices,
+  });
+  if (pick == null) return;
+  const snap = list[pick].snapshot;
+  const el = editorEl();
+  if (part === 'intro') {
+    el.querySelector('.pg-quote').value = snap.intro_quote || '';
+    el.querySelector('.pg-attribution').value = snap.intro_attribution || '';
+  } else {
+    el.querySelector('.rte-editable').innerHTML = sanitizeRichText(snap.footer_html || '');
+  }
   notice('Loaded an earlier version into the editor. Press Save to keep it, or Cancel to discard.', 'info');
 }
 
