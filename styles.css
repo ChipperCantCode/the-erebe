@@ -851,9 +851,6 @@ dialog.modal::backdrop { background: rgba(8, 6, 5, 0.72); backdrop-filter: blur(
 }
 .pf-piece.in { opacity: 1; transform: none; }
 .pf-piece:last-child { border-bottom: 0; }
-.pf-piece.is-archived { opacity: 0.55; }
-.pf-piece.is-archived.in { opacity: 0.55; }
-.pf-archived-flag { color: var(--warn); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 8px; }
 
 .pf-head { margin-bottom: 18px; padding-right: 48px; }
 .pf-meta {
@@ -890,7 +887,6 @@ figcaption { color: var(--text-faint); font-size: 0.82rem; margin-top: 6px; font
     display: grid; grid-template-columns: minmax(220px, 31%) 1fr; column-gap: 44px; align-items: start;
   }
   .pf-piece:not(.is-editing) .pf-head { position: sticky; top: 24px; padding-right: 0; }
-  .pf-piece:not(.is-editing) .pf-archived-flag { grid-column: 1 / -1; }
 }
 
 .pf-edit-btn {
@@ -1031,4 +1027,5 @@ body.pf-editing .pf-index-toggle { display: none; }
 .pf-empty-part { text-align: center; padding: 10px 0; }
 .pf-quote-input { font-style: italic; font-size: 1.1rem; line-height: 1.55; }
 .pf-title-input { font-size: 1.5rem; padding: 10px 12px; }
-.pf-more-btn { margin-left: auto; min-width: 48px; font-size: 1.2rem; line-height: 1; letter-spacing: 0.05em; }
+button.pf-trash-btn { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 46px; padding: 8px 12px; color: var(--bad); border-color: rgba(194, 96, 79, 0.5); }
+button.pf-trash-btn:hover { background: var(--bad); color: #200; filter: none; }

@@ -40,8 +40,8 @@ at https://chippercantcode.github.io/the-erebe/)
   embed on the homepage, older ones list underneath as a dated archive. No code changes
   needed for Inani to update the front page himself, add a new stream, or retire an old
   one. The **Portfolio** tab edits the portfolio's intro quote and credits footer, adds
-  pieces, and archives/unarchives them (the pieces themselves are edited in place on
-  `portfolio.html`). The **Inbox** tab holds Contact Inani messages and gallery photo
+  pieces, and restores any piece deleted with the trash icon (the pieces themselves are
+  edited in place on `portfolio.html`). The **Inbox** tab holds Contact Inani messages and gallery photo
   reports (`admin.html#inbox` opens it directly). The **Feedback** tab shows the history of everything submitted through the public
   feedback form (see below) and can also submit directly.
 - `portfolio.html` — Inani's art portfolio, the page to send grant reviewers. An intro
@@ -160,9 +160,11 @@ clicking a link off the page, or pressing Cancel while there are unsaved changes
 *Save / Discard / Keep editing* prompt; closing or reloading the tab shows the browser's
 own "Leave site?" warning (browsers don't allow a custom one there). Text fields save with
 the Save button. Photo uploads, replacements, deletions, and reordering save immediately.
-The editor's bottom bar is **Save**, **Cancel & revert**, and (for pieces) a **⋯** menu
-with Archive and Delete. **Delete piece** asks for confirmation and offers **Archive** instead (archive is
-reversible, delete removes the photos for good).
+The editor's bottom bar is **Save**, **Cancel & revert**, and (for pieces) a **trash
+icon** at the bottom right. Because every version is saved, the trash icon doesn't erase
+anything: after a confirmation it hides the piece (`archived = true`), keeping its text
+and photos, and **Admin → Portfolio** lists it as "deleted" with a **Restore** button.
+Removed pieces never show on the page, even for admins.
 
 **Photos** are resized in the browser before upload (`media.js`: ~2000px long edge for
 the full copy, ~1200px for the display copy, JPEG at 85%), which also strips hidden
