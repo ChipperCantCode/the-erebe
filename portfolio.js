@@ -134,7 +134,7 @@ function pieceViewHtml(p) {
 }
 
 // The intro quote and the credits footer behave like pieces for admins: a ✎ button,
-// inline editing, the same unsaved-changes prompts, and their own edit history.
+// inline editing and the same unsaved-changes prompts (their edit history is kept in the database).
 const PAGE_PARTS = {
   intro: { elId: 'pf-intro-block', label: 'the intro quote' },
   credits: { elId: 'pf-credits', label: 'the credits' },
@@ -388,7 +388,7 @@ function editFormHtml(p) {
       <div class="pf-editor-actions">
         <button type="button" data-ed="save">Save</button>
         <button type="button" class="secondary" data-ed="cancel">Cancel &amp; revert</button>
-        <button type="button" class="secondary pf-more-btn" data-ed="more" aria-label="More: history, archive, delete" title="History, archive, delete">⋯</button>
+        <button type="button" class="secondary pf-more-btn" data-ed="more" aria-label="More: archive or delete" title="Archive or delete">⋯</button>
       </div>
     </div>`;
 }
@@ -533,14 +533,12 @@ function wireEditor(el) {
     const pick = await choose({
       title: p.title,
       choices: [
-        { label: `History${p.version_count ? ` (${p.version_count} earlier version${p.version_count === 1 ? '' : 's'})` : ''}`, value: 'history', kind: 'secondary' },
         { label: p.archived ? 'Unarchive (show publicly)' : 'Archive (hide from public)', value: 'archive', kind: 'secondary' },
         { label: 'Delete piece…', value: 'delete', kind: 'danger' },
         { label: 'Close', value: null, kind: 'secondary' },
       ],
     });
-    if (pick === 'history') showHistory();
-    else if (pick === 'archive') toggleArchive();
+    if (pick === 'archive') toggleArchive();
     else if (pick === 'delete') deletePiece();
   });
   wirePhotoManager(el);
@@ -803,7 +801,7 @@ async function deletePiece() {
   const choice = await choose({
     title: `Delete “${p.title}”?`,
     html: `<p>This removes the piece from the site permanently${photoCount ? `, including its ${photoCount} photo${photoCount === 1 ? '' : 's'}` : ''}.</p>
-      <p>A copy of the text is kept in the edit history, but ${photoCount ? 'photos can’t be recovered' : 'it won’t be easy to bring back'}.
+      <p>A copy of the text is kept in the database's edit history, but ${photoCount ? 'photos can’t be recovered' : 'it won’t be easy to bring back'}.
       <strong>Archiving</strong> hides it from the public instead, and can be undone any time.</p>`,
     choices: [
       { label: 'Delete permanently', value: 'delete', kind: 'danger' },
@@ -827,52 +825,6 @@ async function deletePiece() {
   notice(`Deleted “${p.title}”.`, 'success');
 }
 
-async function showHistory() {
-  const { data: versions, error } = await supabase.rpc('admin_get_portfolio_versions', {
-    p_session_token: adminToken,
-    p_project_id: editing.id,
-  });
-  if (error) return notice(rpcErrorMessage(error));
-  if (!versions?.length) {
-    await choose({ title: 'No history yet', html: '<p>Earlier versions appear here each time this piece is saved.</p>', choices: [{ label: 'OK', value: null }] });
-    return;
-  }
-  const textOf = (html) => {
-    const t = document.createElement('template');
-    t.innerHTML = sanitizeRichText(html || '');
-    return (t.content.textContent || '').replace(/\s+/g, ' ').trim();
-  };
-  const choices = versions.slice(0, 15).map((v, i) => ({
-    label: `${new Date(v.changed_at).toLocaleString()} — “${v.snapshot.title}”`,
-    value: i,
-    kind: 'secondary',
-  }));
-  choices.push({ label: 'Close', value: null });
-  const pick = await choose({
-    title: 'Earlier versions',
-    html: `<p>Each entry is how the piece looked <em>before</em> a save. Pick one to load it into the editor — nothing changes until you press Save.</p>
-      <ul class="pf-history-list">${versions
-        .slice(0, 15)
-        .map((v) => `<li><strong>${new Date(v.changed_at).toLocaleString()}</strong> — ${escapeHtml(textOf(v.snapshot.body_html).slice(0, 110))}…</li>`)
-        .join('')}</ul>`,
-    choices,
-  });
-  if (pick == null) return;
-  const s = versions[pick].snapshot;
-  const el = editorEl();
-  const set = (sel, val) => (el.querySelector(sel).value = val ?? '');
-  set('.ed-title', s.title);
-  set('.ed-month', monthValue(s.occurred_on));
-  set('.ed-year-label', s.year_label);
-  set('.ed-event', s.event);
-  set('.ed-role', s.role);
-  set('.ed-credit', s.credit);
-  set('.ed-slug', s.slug);
-  set('.ed-sort', s.sort_order);
-  el.querySelector('.rte-editable').innerHTML = sanitizeRichText(s.body_html || '');
-  notice('Loaded an earlier version into the editor. Press Save to keep it, or Cancel to discard.', 'info');
-}
-
 // ---------------- admin: intro quote + credits editing ----------------
 
 function pageEditorHtml(part) {
@@ -894,7 +846,6 @@ function pageEditorHtml(part) {
       <div class="pf-editor-actions">
         <button type="button" data-ed="save">Save</button>
         <button type="button" class="secondary" data-ed="cancel">Cancel &amp; revert</button>
-        <button type="button" class="secondary pf-more-btn" data-ed="history" aria-label="History" title="History${page.version_count ? ` (${page.version_count})` : ''}">⋯</button>
       </div>
     </div>`;
 }
@@ -914,7 +865,6 @@ function openPageEditor(part) {
       return;
     closeEditor();
   });
-  el.querySelector('[data-ed="history"]').addEventListener('click', () => showPageHistory(part));
   editing.initial = serializeEditor();
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   el.querySelector('textarea, .rte-editable')?.focus();
@@ -950,45 +900,6 @@ async function savePageEditor() {
       btn.textContent = 'Save';
     }
   }
-}
-
-async function showPageHistory(part) {
-  const { data: versions, error } = await supabase.rpc('admin_get_portfolio_page_versions', { p_session_token: adminToken });
-  if (error) return notice(rpcErrorMessage(error));
-  if (!versions?.length) {
-    await choose({ title: 'No history yet', html: '<p>Earlier versions appear here each time the intro or credits are saved.</p>', choices: [{ label: 'OK', value: null }] });
-    return;
-  }
-  const textOf = (html) => {
-    const t = document.createElement('template');
-    t.innerHTML = sanitizeRichText(html || '');
-    return (t.content.textContent || '').replace(/\s+/g, ' ').trim();
-  };
-  const preview = (v) =>
-    part === 'intro'
-      ? `“${v.snapshot.intro_quote || '(no quote)'}”${v.snapshot.intro_attribution ? ' — ' + v.snapshot.intro_attribution : ''}`
-      : textOf(v.snapshot.footer_html) || '(no credits)';
-  const list = versions.slice(0, 15);
-  const choices = list.map((v, i) => ({ label: `Load ${new Date(v.changed_at).toLocaleString()}`, value: i, kind: 'secondary' }));
-  choices.push({ label: 'Close', value: null });
-  const pick = await choose({
-    title: `Earlier versions of ${PAGE_PARTS[part].label}`,
-    html: `<p>Each entry is how it looked <em>before</em> a save. Loading one puts it in the editor. Nothing changes until you press Save.</p>
-      <ul class="pf-history-list">${list
-        .map((v) => `<li><strong>${new Date(v.changed_at).toLocaleString()}</strong>: ${escapeHtml(preview(v).slice(0, 160))}</li>`)
-        .join('')}</ul>`,
-    choices,
-  });
-  if (pick == null) return;
-  const snap = list[pick].snapshot;
-  const el = editorEl();
-  if (part === 'intro') {
-    el.querySelector('.pg-quote').value = snap.intro_quote || '';
-    el.querySelector('.pg-attribution').value = snap.intro_attribution || '';
-  } else {
-    el.querySelector('.rte-editable').innerHTML = sanitizeRichText(snap.footer_html || '');
-  }
-  notice('Loaded an earlier version into the editor. Press Save to keep it, or Cancel to discard.', 'info');
 }
 
 document.getElementById('pf-new-piece').addEventListener('click', async () => {

@@ -926,7 +926,7 @@ function renderPortfolio() {
     <h2 class="section-title" style="margin-top:0;">Portfolio</h2>
     <p class="intro">
       Everything on the <a href="portfolio.html">portfolio page</a> can be edited right there while you're logged in here:
-      each piece, the intro quote, and the credits get a ✎ button in their top-right corner, and every save is kept in an edit history.
+      each piece, the intro quote, and the credits get a ✎ button in their top-right corner, and every save is kept in an edit history in the database.
       The intro and credits can also be edited below.
     </p>
 
