@@ -121,7 +121,7 @@ grant execute on function public.admin_get_portfolio(uuid) to anon, authenticate
 -- ---------- admin writes ----------
 create or replace function public.portfolio_slugify(p_text text)
 returns text
-language sql immutable
+language sql immutable set search_path = public
 as $$
   select trim(both '-' from regexp_replace(lower(coalesce(p_text, '')), '[^a-z0-9]+', '-', 'g'));
 $$;

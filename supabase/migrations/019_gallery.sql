@@ -175,21 +175,9 @@ end;
 $$;
 grant execute on function public.admin_reorder_gallery_sections(uuid, uuid[]) to anon, authenticated;
 
--- Only empty sections can be deleted -- move or delete the photos first, so nothing
--- disappears by accident.
-create or replace function public.admin_delete_gallery_section(p_session_token uuid, p_id uuid)
-returns void
-language plpgsql security definer set search_path = public
-as $$
-begin
-  perform check_admin_session(p_session_token);
-  if exists (select 1 from gallery_photos where section_id = p_id) then
-    raise exception 'section_not_empty';
-  end if;
-  delete from gallery_sections where id = p_id;
-end;
-$$;
-grant execute on function public.admin_delete_gallery_section(uuid, uuid) to anon, authenticated;
+-- Deleting a section (only allowed when it's empty) is handled by the gallery-photos
+-- Edge Function rather than an RPC, alongside photo deletion, which has to go through
+-- the Storage API anyway.
 
 -- Move a photo to a section (goes to the end of that section).
 create or replace function public.admin_move_gallery_photo(p_session_token uuid, p_photo_id uuid, p_section_id uuid)
