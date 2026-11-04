@@ -9,6 +9,10 @@ import {
   escapeHtml,
   sanitizeRichText,
   rpcErrorMessage,
+  richTextEditorHtml,
+  wireRichTextEditor,
+  readFunctionErrorBody,
+  photoUrl,
   CREW_LOCATION_OPTIONS,
   CREW_LOCATION_LABELS,
 } from './shared.js';
@@ -26,6 +30,8 @@ let dash = { wishlist_items: [], donors: [], change_requests: [] };
 let homepage = { hero_tagline: '', hero_subtagline: '', cta_text: '', sections: [] };
 let feedbackRequests = [];
 let buildStreams = [];
+let portfolio = { page: {}, projects: [] };
+let inbox = { contacts: [], reports: [] };
 
 const loginBox = document.getElementById('login-box');
 const dashboard = document.getElementById('dashboard');
@@ -50,26 +56,42 @@ document.getElementById('admin-logout').addEventListener('click', () => {
   location.reload();
 });
 
+function showTab(name) {
+  const btn = document.querySelector(`.tabs [data-tab="${name}"]`);
+  if (!btn) return;
+  document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach((p) => p.classList.add('hidden'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+}
 document.querySelectorAll('.tabs [data-tab]').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.tab-panel').forEach((p) => p.classList.add('hidden'));
-    document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+    showTab(btn.dataset.tab);
+    history.replaceState(null, '', '#' + btn.dataset.tab);
   });
 });
+// links like admin.html#inbox (from the GitHub alert issues) open that tab directly
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
 
 async function loadDashboard() {
   clearNotice();
-  const [{ data, error }, { data: hpData, error: hpError }, { data: fbData, error: fbError }, { data: bsData, error: bsError }] =
-    await Promise.all([
-      supabase.rpc('admin_get_dashboard', { p_session_token: token }),
-      supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
-      supabase.rpc('admin_get_feedback_requests', { p_session_token: token }),
-      supabase.rpc('get_build_streams'),
-    ]);
-  if (error || hpError || fbError || bsError) {
-    notice(rpcErrorMessage(error || hpError || fbError || bsError));
+  const [
+    { data, error },
+    { data: hpData, error: hpError },
+    { data: fbData, error: fbError },
+    { data: bsData, error: bsError },
+    { data: pfData, error: pfError },
+    { data: ibData, error: ibError },
+  ] = await Promise.all([
+    supabase.rpc('admin_get_dashboard', { p_session_token: token }),
+    supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
+    supabase.rpc('admin_get_feedback_requests', { p_session_token: token }),
+    supabase.rpc('get_build_streams'),
+    supabase.rpc('admin_get_portfolio', { p_session_token: token }),
+    supabase.rpc('admin_get_inbox', { p_session_token: token }),
+  ]);
+  if (error || hpError || fbError || bsError || pfError || ibError) {
+    notice(rpcErrorMessage(error || hpError || fbError || bsError || pfError || ibError));
     clearAdminToken();
     token = '';
     loginBox.classList.remove('hidden');
@@ -80,6 +102,8 @@ async function loadDashboard() {
   homepage = hpData;
   feedbackRequests = fbData || [];
   buildStreams = bsData || [];
+  portfolio = pfData || { page: {}, projects: [] };
+  inbox = ibData || { contacts: [], reports: [] };
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
   renderChangeRequests();
@@ -87,6 +111,9 @@ async function loadDashboard() {
   renderWishlist();
   renderHomepage();
   renderFeedback();
+  renderPortfolio();
+  renderInbox();
+  if (location.hash) showTab(location.hash.slice(1));
 }
 
 // ---------------- Change requests ----------------
@@ -554,41 +581,6 @@ function renderWishlist() {
 
 // ---------------- Homepage copy ----------------
 
-function richTextEditorHtml(bodyHtml) {
-  return `
-    <div class="rte">
-      <div class="rte-toolbar">
-        <button type="button" class="secondary" data-cmd="bold" title="Bold"><b>B</b></button>
-        <button type="button" class="secondary" data-cmd="italic" title="Italic"><i>I</i></button>
-        <button type="button" class="secondary" data-cmd="formatBlock" data-value="H2" title="Heading">H2</button>
-        <button type="button" class="secondary" data-cmd="formatBlock" data-value="P" title="Paragraph">¶</button>
-        <button type="button" class="secondary" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
-        <button type="button" class="secondary" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
-        <button type="button" class="secondary" data-cmd="createLink" title="Add link">Link</button>
-        <button type="button" class="secondary" data-cmd="unlink" title="Remove link">Unlink</button>
-        <button type="button" class="secondary" data-cmd="removeFormat" title="Clear formatting">Clear</button>
-      </div>
-      <div class="rte-editable" contenteditable="true">${bodyHtml || ''}</div>
-    </div>`;
-}
-
-function wireRichTextEditor(container) {
-  const editable = container.querySelector('.rte-editable');
-  container.querySelectorAll('.rte-toolbar [data-cmd]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      editable.focus();
-      const cmd = btn.dataset.cmd;
-      if (cmd === 'createLink') {
-        const url = prompt('Link URL (https://... or mailto:...)');
-        if (!url) return;
-        document.execCommand('createLink', false, url);
-      } else {
-        document.execCommand(cmd, false, btn.dataset.value || null);
-      }
-    });
-  });
-}
-
 function homepageSectionHtml(s) {
   return `
   <div class="card" data-id="${s.id}">
@@ -919,6 +911,245 @@ function renderFeedback() {
       btn.disabled = false;
     }
   });
+}
+
+// ---------------- Portfolio ----------------
+// Per-piece editing happens inline on portfolio.html itself (admins see a ✎ on each piece).
+// This tab covers the page-level bits: intro quote, credits footer, new pieces, archive.
+
+function renderPortfolio() {
+  const el = document.getElementById('tab-portfolio');
+  const page = portfolio.page || {};
+  const projects = portfolio.projects || [];
+  const archivedCount = projects.filter((p) => p.archived).length;
+  el.innerHTML = `
+    <h2 class="section-title" style="margin-top:0;">Portfolio</h2>
+    <p class="intro">
+      Everything on the <a href="portfolio.html">portfolio page</a> can be edited right there while you're logged in here:
+      each piece, the intro quote, and the credits get a ✎ button in their top-right corner, and every save is kept in an edit history.
+      The intro and credits can also be edited below.
+    </p>
+
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--accent);">Intro &amp; credits</h3>
+      <div class="field-group">
+        <label class="field">Intro quote (shown at the top, attributed to Inani)</label>
+        <textarea id="pf-intro-quote" rows="3">${escapeHtml(page.intro_quote || '')}</textarea>
+      </div>
+      <div class="field-group">
+        <label class="field">Quote attributed to (leave blank for none)</label>
+        <input type="text" id="pf-intro-attribution" value="${escapeHtml(page.intro_attribution || '')}" />
+      </div>
+      <label class="field">Credits footer (shown at the bottom of the page)</label>
+      ${richTextEditorHtml(sanitizeRichText(page.footer_html || ''))}
+      <button type="button" id="pf-save-page" class="small" style="margin-top:10px;">Save</button>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--accent);">Add a piece</h3>
+      <div class="row">
+        <div class="field-group">
+          <label class="field">Title</label>
+          <input type="text" id="pf-new-title" />
+        </div>
+        <div class="field-group">
+          <label class="field">Month it happened</label>
+          <input type="month" id="pf-new-month" value="${new Date().toISOString().slice(0, 7)}" />
+        </div>
+      </div>
+      <button type="button" id="pf-create" class="small">Create &amp; open editor</button>
+    </div>
+
+    <h3 style="color:var(--accent); margin: 24px 0 10px;">All pieces (${projects.length}${archivedCount ? `, ${archivedCount} archived` : ''})</h3>
+    ${projects
+      .map(
+        (p) => `
+      <div class="card" data-id="${p.id}" style="${p.archived ? 'opacity:0.6;' : ''}">
+        <div class="item-head">
+          <div>
+            <div class="item-name">${escapeHtml(p.title)}</div>
+            <div class="item-desc">${escapeHtml([p.date_label, p.event, p.role].filter(Boolean).join(' · '))} · ${p.photos.length} photo${p.photos.length === 1 ? '' : 's'}</div>
+          </div>
+          ${p.archived ? '<span class="pill pending">archived</span>' : '<span class="pill approved">live</span>'}
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <a class="btn secondary small" href="portfolio.html#${escapeHtml(p.slug)}">Edit on page →</a>
+          <button type="button" class="secondary small" data-action="toggle-archive">${p.archived ? 'Unarchive' : 'Archive'}</button>
+        </div>
+      </div>`
+      )
+      .join('')}`;
+
+  const footerRte = el.querySelector('.rte');
+  wireRichTextEditor(footerRte);
+
+  document.getElementById('pf-save-page').addEventListener('click', async () => {
+    const { error } = await supabase.rpc('admin_save_portfolio_page', {
+      p_session_token: token,
+      p_intro_quote: document.getElementById('pf-intro-quote').value.trim(),
+      p_intro_attribution: document.getElementById('pf-intro-attribution').value.trim(),
+      p_footer_html: sanitizeRichText(footerRte.querySelector('.rte-editable').innerHTML),
+    });
+    if (error) return notice(rpcErrorMessage(error));
+    notice('Portfolio intro and credits saved.', 'success');
+    await loadDashboard();
+  });
+
+  document.getElementById('pf-create').addEventListener('click', async () => {
+    const title = document.getElementById('pf-new-title').value.trim();
+    const month = document.getElementById('pf-new-month').value;
+    if (!title) return notice('Give the new piece a title.');
+    const { data: res, error } = await supabase.rpc('admin_create_portfolio_project', {
+      p_session_token: token,
+      p_title: title,
+      p_occurred_on: month ? month + '-01' : null,
+    });
+    if (error) return notice(rpcErrorMessage(error));
+    location.href = 'portfolio.html#' + res.slug;
+  });
+
+  el.querySelectorAll('[data-action="toggle-archive"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const p = projects.find((x) => x.id === btn.closest('.card').dataset.id);
+      const { error } = await supabase.rpc('admin_set_portfolio_project_archived', {
+        p_session_token: token,
+        p_id: p.id,
+        p_archived: !p.archived,
+      });
+      if (error) return notice(rpcErrorMessage(error));
+      await loadDashboard();
+    });
+  });
+}
+
+// ---------------- Inbox (contact messages + photo reports) ----------------
+
+const REPORT_REASON_LABELS = {
+  inappropriate: 'Inappropriate or offensive',
+  me_in_photo: "Reporter is in the photo and wants it taken down",
+  my_photo_no_permission: "Reporter says it's their photo, posted without permission",
+  spam: 'Spam or unrelated',
+  other: 'Something else',
+};
+
+function contactCardHtml(c) {
+  return `
+  <div class="card" data-contact-id="${c.id}" style="${c.status === 'archived' ? 'opacity:0.6;' : ''}">
+    <div class="item-head">
+      <div class="item-name">${escapeHtml(c.name)}</div>
+      <span class="pill ${c.status === 'new' ? 'pending' : c.status === 'read' ? 'approved' : ''}">${c.status}</span>
+    </div>
+    <div class="item-desc"><a href="mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent('Re: your message to Inani')}">${escapeHtml(c.email)}</a></div>
+    <div class="inbox-msg">${escapeHtml(c.message)}</div>
+    <p style="margin:0 0 8px; font-size:0.78rem; color:var(--text-faint);">${new Date(c.created_at).toLocaleString()}${c.github_issue_url ? ` · <a href="${escapeHtml(c.github_issue_url)}" target="_blank" rel="noopener noreferrer">alert issue #${c.github_issue_number}</a>` : ''}</p>
+    ${c.status !== 'read' ? '<button type="button" class="small" data-contact-status="read">Mark read</button>' : ''}
+    ${c.status !== 'archived' ? '<button type="button" class="secondary small" data-contact-status="archived">Archive</button>' : '<button type="button" class="secondary small" data-contact-status="new">Move back to inbox</button>'}
+  </div>`;
+}
+
+function reportCardHtml(r) {
+  const ph = r.photo;
+  const snap = r.photo_snapshot || {};
+  const thumbPath = ph?.display_path || snap.display_path;
+  return `
+  <div class="card" data-report-id="${r.id}" style="${r.status !== 'open' ? 'opacity:0.6;' : ''}">
+    ${ph && thumbPath ? `<a href="${escapeHtml(photoUrl('gallery', ph.storage_path))}" target="_blank" rel="noopener"><img class="inbox-thumb" src="${escapeHtml(photoUrl('gallery', thumbPath))}" alt="" /></a>` : ''}
+    <div class="item-head">
+      <div class="item-name">Flagged ${escapeHtml(r.about)}: ${escapeHtml(REPORT_REASON_LABELS[r.reason] || r.reason)}</div>
+      <span class="pill ${r.status === 'open' ? 'pending' : r.status === 'resolved' ? 'approved' : 'denied'}">${r.status}</span>
+    </div>
+    <div class="item-desc">
+      Section: ${escapeHtml(ph?.section_title || snap.section_title || '?')}
+      · Caption: ${escapeHtml((ph ? ph.caption : snap.caption) || '(none)')}
+      · ${escapeHtml('Photo: ' + ((ph ? ph.photographer : snap.photographer) || '?'))}
+      <br />Photo is now: <strong>${ph ? escapeHtml(ph.status) : 'deleted'}</strong>${r.auto_hidden ? ' (hidden automatically by this report)' : ''}
+      ${r.details ? `<br />Details: ${escapeHtml(r.details)}` : ''}
+      ${r.reporter_contact ? `<br />Reporter contact: <a href="mailto:${encodeURIComponent(r.reporter_contact)}">${escapeHtml(r.reporter_contact)}</a>` : ''}
+      ${r.admin_note ? `<br />Admin note: ${escapeHtml(r.admin_note)}` : ''}
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.78rem; color:var(--text-faint); clear:both;">${new Date(r.created_at).toLocaleString()}${r.github_issue_url ? ` · <a href="${escapeHtml(r.github_issue_url)}" target="_blank" rel="noopener noreferrer">alert issue #${r.github_issue_number}</a>` : ''}</p>
+    ${
+      r.status === 'open'
+        ? `<div class="field-group"><input type="text" class="report-note" placeholder="Note (optional)" /></div>
+           ${ph && ph.status === 'visible' ? '<button type="button" class="small" data-report-act="hide">Hide photo &amp; resolve</button>' : ''}
+           ${ph ? '<button type="button" class="danger small" data-report-act="delete">Delete photo &amp; resolve</button>' : ''}
+           ${ph && ph.status === 'hidden' ? '<button type="button" class="secondary small" data-report-act="restore">Restore photo &amp; dismiss</button>' : ''}
+           <button type="button" class="secondary small" data-report-act="dismiss">Dismiss (no action)</button>`
+        : ''
+    }
+  </div>`;
+}
+
+function renderInbox() {
+  const el = document.getElementById('tab-inbox');
+  const newContacts = inbox.contacts.filter((c) => c.status === 'new').length;
+  const openReports = inbox.reports.filter((r) => r.status === 'open').length;
+  const total = newContacts + openReports;
+  document.getElementById('inbox-count').textContent = total ? `(${total})` : '';
+  const activeContacts = inbox.contacts.filter((c) => c.status !== 'archived');
+  const archivedContacts = inbox.contacts.filter((c) => c.status === 'archived');
+  const openR = inbox.reports.filter((r) => r.status === 'open');
+  const closedR = inbox.reports.filter((r) => r.status !== 'open');
+
+  el.innerHTML = `
+    <h2 class="section-title" style="margin-top:0;">Contact Inani (${newContacts} new)</h2>
+    <p class="intro">Messages from the form at the bottom of the portfolio page. Reply by tapping the email address. Each one also opens a short alert issue on GitHub (without the message or email, since the repo is public). Close that issue once it's handled.</p>
+    ${activeContacts.map(contactCardHtml).join('') || '<p class="intro">No messages.</p>'}
+    ${archivedContacts.length ? `<details style="margin-top:12px;"><summary style="cursor:pointer; color:var(--accent);">Archived (${archivedContacts.length})</summary>${archivedContacts.map(contactCardHtml).join('')}</details>` : ''}
+
+    <h2 class="section-title">Gallery reports (${openReports} open)</h2>
+    <p class="intro">Photos reported as "I'm in this photo" or "posted without permission" are hidden automatically right away. Others are hidden automatically after 3 different people report them.</p>
+    ${openR.map(reportCardHtml).join('') || '<p class="intro">No open reports.</p>'}
+    ${closedR.length ? `<details style="margin-top:12px;"><summary style="cursor:pointer; color:var(--accent);">Resolved (${closedR.length})</summary>${closedR.map(reportCardHtml).join('')}</details>` : ''}`;
+
+  el.querySelectorAll('[data-contact-status]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const { error } = await supabase.rpc('admin_set_contact_status', {
+        p_session_token: token,
+        p_id: btn.closest('.card').dataset.contactId,
+        p_status: btn.dataset.contactStatus,
+      });
+      if (error) return notice(rpcErrorMessage(error));
+      await loadDashboard();
+    })
+  );
+
+  el.querySelectorAll('[data-report-act]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.card');
+      const r = inbox.reports.find((x) => x.id === card.dataset.reportId);
+      const note = card.querySelector('.report-note')?.value || '';
+      const act = btn.dataset.reportAct;
+      if (act === 'delete') {
+        if (!confirm('Delete this photo permanently? This cannot be undone.')) return;
+        const fd = new FormData();
+        fd.append('action', 'delete_photo');
+        fd.append('photo_id', r.gallery_photo_id);
+        fd.append('admin_token', token);
+        const { error } = await supabase.functions.invoke('gallery-photos', { body: fd });
+        if (error) {
+          const body = await readFunctionErrorBody(error);
+          return notice('Could not delete: ' + (body?.error || error.message));
+        }
+      } else if (act === 'hide' || act === 'restore') {
+        const { error } = await supabase.rpc('admin_set_gallery_photo_status', {
+          p_session_token: token,
+          p_photo_id: r.gallery_photo_id,
+          p_status: act === 'hide' ? 'hidden' : 'visible',
+          p_reason: note || REPORT_REASON_LABELS[r.reason],
+        });
+        if (error) return notice(rpcErrorMessage(error));
+      }
+      const { error } = await supabase.rpc('admin_resolve_report', {
+        p_session_token: token,
+        p_id: r.id,
+        p_status: act === 'dismiss' || act === 'restore' ? 'dismissed' : 'resolved',
+        p_admin_note: note,
+      });
+      if (error) return notice(rpcErrorMessage(error));
+      await loadDashboard();
+    })
+  );
 }
 
 // ---------------- init ----------------
