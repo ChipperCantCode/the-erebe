@@ -94,8 +94,8 @@ async function loadDashboard() {
     notice(rpcErrorMessage(error || hpError || fbError || bsError || pfError || ibError));
     clearAdminToken();
     token = '';
-    loginBox.classList.remove('hidden');
     dashboard.classList.add('hidden');
+    setTimeout(() => location.replace('my-list.html'), 1500);
     return;
   }
   dash = data;
@@ -1156,7 +1156,8 @@ function renderInbox() {
 
 async function init() {
   if (!token) {
-    loginBox.classList.remove('hidden');
+    // one shared login lives on My List (it accepts admin credentials too)
+    location.replace('my-list.html');
     return;
   }
   await loadDashboard();

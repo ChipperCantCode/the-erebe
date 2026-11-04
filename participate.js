@@ -70,7 +70,7 @@ function itemCardHtml(item) {
       ${
         inCart
           ? `<span class="pill approved">In your list: ${formatQuantityDisplay(inCart.quantity, item.unit)}</span>
-             <button type="button" class="secondary small" data-action="edit">Edit</button>
+             ${item.unit === 'people' ? '' : '<button type="button" class="secondary small" data-action="edit">Edit</button>'}
              <button type="button" class="secondary small" data-action="remove">Remove</button>`
           : `<button type="button" class="small" data-action="add">I can help with this</button>`
       }
@@ -95,6 +95,11 @@ function wireCard(el, item) {
   const cancelBtn = el.querySelector('[data-action="cancel"]');
 
   const openForm = () => {
+    // people-type help has no quantity — signing up is just one tap
+    if (item.unit === 'people') {
+      confirmBtn.click();
+      return;
+    }
     qtyForm.classList.remove('hidden');
     qtyInput.focus();
   };

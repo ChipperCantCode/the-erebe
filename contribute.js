@@ -121,7 +121,7 @@ function renderSelectedItems() {
           </div>
           <div class="row" style="margin-top:6px;">
             <div>
-              <label class="field">Quantity</label>
+              ${s.unit === 'people' ? '' : '<label class="field">Quantity</label>'}
               ${quantityInputHtml(s, 'sel-qty', s.quantity)}
             </div>
           </div>

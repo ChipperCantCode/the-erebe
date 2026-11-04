@@ -129,6 +129,10 @@ export function formatQuantityDisplay(n, unit) {
 // number inputs with sensible min/step, everything else keeps the fraction-capable text input
 export function quantityInputHtml(item, className, existingValue, extraAttrs = '') {
   const val = existingValue === '' || existingValue == null ? '' : existingValue;
+  // help that is a person rather than a thing has no quantity: it's always one
+  if (item.unit === 'people') {
+    return `<input type="hidden" class="${className}" value="1" ${extraAttrs} />`;
+  }
   if (item.unit === '%') {
     return `<input type="number" class="${className}" min="1" max="100" step="1" placeholder="% (1-100)" value="${val}" ${extraAttrs} />`;
   }
@@ -139,6 +143,7 @@ export function quantityInputHtml(item, className, existingValue, extraAttrs = '
 }
 
 export function parseQuantityForItem(item, raw) {
+  if (item.unit === 'people') return 1;
   if (item.unit === '%' || item.unit === 'USD') {
     const n = Number(raw);
     return Number.isFinite(n) ? n : NaN;
