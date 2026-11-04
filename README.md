@@ -62,8 +62,8 @@ at https://chippercantcode.github.io/the-erebe/)
   embed on the homepage, older ones list underneath as a dated archive. No code changes
   needed for Inani to update the front page himself, add a new stream, or retire an old
   one. The **Portfolio** tab edits the portfolio's intro quote and credits footer, adds
-  pieces, and archives/unarchives them (the pieces themselves are edited in place on
-  `portfolio.html`). The **Inbox** tab holds Contact Inani messages and gallery photo
+  pieces, and restores any piece deleted with the trash icon (the pieces themselves are
+  edited in place on `portfolio.html`). The **Inbox** tab holds Contact Inani messages and gallery photo
   reports (`admin.html#inbox` opens it directly). The **Feedback** tab shows the history of everything submitted through the public
   feedback form (see below) and can also submit directly.
 - `portfolio.html` — Inani's art portfolio, the page to send grant reviewers. An intro
@@ -164,11 +164,13 @@ Tables (all locked down: RLS on, no grants — reachable only through the RPCs):
   (✎ on the quote and on the credits) or from Admin → Portfolio, both through
   `admin_save_portfolio_page`. (`admin_update_portfolio_page` is the older version without
   the attribution; it's unused and kept only so no live function had to be dropped.)
-- `portfolio_page_versions` — edit history for the quote/credits, filled by a trigger
-  before every change, just like the pieces' history.
-- `portfolio_project_versions` — **edit history.** A trigger snapshots a piece's row
-  every time it's saved or deleted (deletes also keep a list of its photos), so the
-  text of any earlier version can be brought back from the editor's **History** button.
+- `portfolio_page_versions` — edit history (database only) for the quote/credits, filled
+  by a trigger before every change, just like the pieces' history.
+- `portfolio_project_versions` — **edit history (database only).** A trigger snapshots a
+  piece's row every time it's saved or deleted (deletes also keep a list of its photos).
+  There's no History button on the site; to recover an earlier version, ask Claude (or
+  query the table in the Supabase dashboard). `admin_get_portfolio_versions` /
+  `admin_get_portfolio_page_versions` still exist for that, just unused by the pages.
 
 `get_portfolio()` (anon-callable) returns `{ page, projects: [...] }`, newest first, each
 project with `date_label` ("Feb 2024", or `year_label` when set) and its `photos`.
@@ -180,9 +182,11 @@ clicking a link off the page, or pressing Cancel while there are unsaved changes
 *Save / Discard / Keep editing* prompt; closing or reloading the tab shows the browser's
 own "Leave site?" warning (browsers don't allow a custom one there). Text fields save with
 the Save button. Photo uploads, replacements, deletions, and reordering save immediately.
-The editor's bottom bar is **Save**, **Cancel & revert**, and a **⋯** menu with
-History, Archive, and Delete. **Delete piece** asks for confirmation and offers **Archive** instead (archive is
-reversible, delete removes the photos for good).
+The editor's bottom bar is **Save**, **Cancel & revert**, and (for pieces) a **trash
+icon** at the bottom right. Because every version is saved, the trash icon doesn't erase
+anything: after a confirmation it hides the piece (`archived = true`), keeping its text
+and photos, and **Admin → Portfolio** lists it as "deleted" with a **Restore** button.
+Removed pieces never show on the page, even for admins.
 
 **Photos** are resized in the browser before upload (`media.js`: ~2000px long edge for
 the full copy, ~1200px for the display copy, JPEG at 85%), which also strips hidden

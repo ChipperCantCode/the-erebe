@@ -929,12 +929,13 @@ function renderPortfolio() {
   const el = document.getElementById('tab-portfolio');
   const page = portfolio.page || {};
   const projects = portfolio.projects || [];
-  const archivedCount = projects.filter((p) => p.archived).length;
+  const archivedCount = projects.filter((p) => p.archived).length; // "deleted" via the trash icon
   el.innerHTML = `
     <h2 class="section-title" style="margin-top:0;">Portfolio</h2>
     <p class="intro">
       Everything on the <a href="portfolio.html">portfolio page</a> can be edited right there while you're logged in here:
-      each piece, the intro quote, and the credits get a ✎ button in their top-right corner, and every save is kept in an edit history.
+      each piece, the intro quote, and the credits get a ✎ button in their top-right corner, and every save is kept in an edit history in the database.
+      Pieces deleted with the trash icon keep their text and photos and can be restored here.
       The intro and credits can also be edited below.
     </p>
 
@@ -968,7 +969,7 @@ function renderPortfolio() {
       <button type="button" id="pf-create" class="small">Create &amp; open editor</button>
     </div>
 
-    <h3 style="color:var(--accent); margin: 24px 0 10px;">All pieces (${projects.length}${archivedCount ? `, ${archivedCount} archived` : ''})</h3>
+    <h3 style="color:var(--accent); margin: 24px 0 10px;">All pieces (${projects.length - archivedCount} live${archivedCount ? `, ${archivedCount} deleted` : ''})</h3>
     ${projects
       .map(
         (p) => `
@@ -978,11 +979,12 @@ function renderPortfolio() {
             <div class="item-name">${escapeHtml(p.title)}</div>
             <div class="item-desc">${escapeHtml([p.date_label, p.event, p.role].filter(Boolean).join(' · '))} · ${p.photos.length} photo${p.photos.length === 1 ? '' : 's'}</div>
           </div>
-          ${p.archived ? '<span class="pill pending">archived</span>' : '<span class="pill approved">live</span>'}
+          ${p.archived ? '<span class="pill denied">deleted</span>' : '<span class="pill approved">live</span>'}
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <a class="btn secondary small" href="portfolio.html#${escapeHtml(p.slug)}">Edit on page →</a>
-          <button type="button" class="secondary small" data-action="toggle-archive">${p.archived ? 'Unarchive' : 'Archive'}</button>
+          ${p.archived
+            ? '<button type="button" class="small" data-action="toggle-archive">Restore to portfolio</button>'
+            : `<a class="btn secondary small" href="portfolio.html#${escapeHtml(p.slug)}">Edit on page →</a>`}
         </div>
       </div>`
       )
