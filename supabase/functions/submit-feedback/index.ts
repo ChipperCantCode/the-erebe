@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       .from("feedback_requests")
       .insert({
         title: title.trim().slice(0, 300),
-        body: (body || "").slice(0, 5000) || null,
+        body: (body || "").slice(0, 60000) || null,
         submitter_name: (submitter_name || "").trim().slice(0, 200) || null,
         submitter_ip: ip,
         status: "pending",

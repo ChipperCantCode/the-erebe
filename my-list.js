@@ -3,6 +3,7 @@ import {
   getDonorToken,
   setDonorToken,
   clearDonorToken,
+  setAdminToken,
   formatQuantity,
   formatQuantityDisplay,
   quantityInputHtml,
@@ -45,6 +46,13 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   }
   const { data, error } = await supabase.rpc('donor_login', { p_chosen_name: chosenName, p_passcode: passcode });
   if (error) {
+    // not a donor login — maybe the admin name + passcode
+    const { data: adminToken, error: adminErr } = await supabase.rpc('admin_login', { p_name: chosenName, p_passcode: passcode });
+    if (!adminErr && adminToken) {
+      setAdminToken(adminToken);
+      location.href = 'admin.html';
+      return;
+    }
     notice(rpcErrorMessage(error));
     return;
   }

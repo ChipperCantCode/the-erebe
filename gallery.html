@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gallery — The Erebe</title>
+<meta name="description" content="Community photos of the Erebe: build days, the crew, and the temple itself. Add your own." />
+<link rel="canonical" href="https://erebe.art/gallery.html" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="The Erebe" />
+<meta property="og:title" content="Gallery — The Erebe" />
+<meta property="og:description" content="Community photos of the Erebe: build days, the crew, and the temple itself. Add your own." />
+<meta property="og:url" content="https://erebe.art/gallery.html" />
+<meta property="og:image" content="https://erebe.art/assets/og-image.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Gallery — The Erebe" />
+<meta name="twitter:description" content="Community photos of the Erebe: build days, the crew, and the temple itself." />
+<meta name="twitter:image" content="https://erebe.art/assets/og-image.jpg" />
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="wrap wrap-wide">
+  <header class="top">
+    <div class="brand">
+      <h1>Gallery</h1>
+      <p>The Erebe — community photos</p>
+    </div>
+    <nav class="top-links">
+      <a href="index.html">← The Erebe</a>
+      <a href="portfolio.html">Portfolio</a>
+      <a href="participate.html">Wish List</a>
+      <a href="contribute.html">Sign Up to Help</a>
+      <a href="my-list.html">My List</a>
+      <a href="feedback.html">Feedback</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <div id="account-status" class="hidden"></div>
+
+  <div id="admin-bar" class="admin-bar hidden">
+    <span class="admin-bar-label">Admin mode</span>
+    <span class="admin-bar-hint">You can rename, reorder and delete sections, and move, hide or delete any photo. Hidden photos show faded.</span>
+    <button type="button" class="small" id="gl-new-section">+ New section</button>
+  </div>
+
+  <p class="intro gl-intro">
+    Photos of the Erebe and the people building it, shared by the community. Tap any photo to see it
+    full size. Took some of your own? Add them to any section below.
+  </p>
+
+  <details class="gl-guidelines">
+    <summary>Photo guidelines</summary>
+    <ul>
+      <li><strong>Share photos you took</strong>, or ones the photographer has said you can share, and credit them.</li>
+      <li><strong>Ask before posting people.</strong> If someone is clearly recognizable, make sure they're OK with being online. Consent is a core part of burn culture.</li>
+      <li><strong>Keep it all-ages:</strong> no nudity, nothing hateful or harassing, no ads.</li>
+      <li>Hidden location data (GPS) is <strong>stripped automatically</strong> from every photo when it's uploaded.</li>
+      <li>Photos stay the property of whoever took them. They're shown here only to celebrate the project.</li>
+      <li><strong>In a photo and want it gone, or see your work posted without permission?</strong> Tap ⚑ on it. Photos reported for those reasons are hidden right away while we take a look.</li>
+    </ul>
+  </details>
+
+  <div class="gl-toolbar">
+    <label class="checkbox-row hidden" id="gl-mine-wrap"><input type="checkbox" id="gl-mine" /> Show only my uploads</label>
+    <span class="hint hidden" id="gl-login-hint">Log in on <a href="my-list.html">My List</a> to be able to edit or remove your uploads later.</span>
+  </div>
+
+  <div id="notice-area"></div>
+
+  <div id="gl-sections" aria-live="polite">
+    <p class="intro" style="text-align:center; margin:40px 0;">Loading photos…</p>
+  </div>
+
+  <footer class="foot">
+    <a href="index.html">The Erebe</a> · <a href="portfolio.html">Portfolio</a> · <a href="my-list.html">My List</a> · <a href="admin.html">Admin</a> · <a href="feedback.html">Feedback</a>
+  </footer>
+</div>
+
+<script type="module" src="gallery.js"></script>
+</body>
+</html>

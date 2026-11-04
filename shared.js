@@ -121,6 +121,7 @@ export function formatQuantityDisplay(n, unit) {
   if (unit === '%') {
     return formatQuantity(num) + '%';
   }
+  if (unit === 'people' && num === 1) return '1 person';
   return formatQuantity(num) + (unit ? ' ' + unit : '');
 }
 
@@ -128,6 +129,10 @@ export function formatQuantityDisplay(n, unit) {
 // number inputs with sensible min/step, everything else keeps the fraction-capable text input
 export function quantityInputHtml(item, className, existingValue, extraAttrs = '') {
   const val = existingValue === '' || existingValue == null ? '' : existingValue;
+  // help that is a person rather than a thing has no quantity: it's always one
+  if (item.unit === 'people') {
+    return `<input type="hidden" class="${className}" value="1" ${extraAttrs} />`;
+  }
   if (item.unit === '%') {
     return `<input type="number" class="${className}" min="1" max="100" step="1" placeholder="% (1-100)" value="${val}" ${extraAttrs} />`;
   }
@@ -138,6 +143,7 @@ export function quantityInputHtml(item, className, existingValue, extraAttrs = '
 }
 
 export function parseQuantityForItem(item, raw) {
+  if (item.unit === 'people') return 1;
   if (item.unit === '%' || item.unit === 'USD') {
     const n = Number(raw);
     return Number.isFinite(n) ? n : NaN;
@@ -152,23 +158,20 @@ export function formatDate(dateStr) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// ---------- build window + crew location (shared across contribute/my-list/admin) ----------
-export const BUILD_START_DATE = '2026-09-16';
-export const BUILD_END_DATE = '2026-10-07';
-export const BUILD_WINDOW_LABEL = 'Sept 16 – Oct 7, 2026';
-
+// ---------- crew location (shared across contribute/my-list/admin) ----------
+// Stored values (colab, event_site, both, remote) are fixed by the database; only the labels change.
 export const CREW_LOCATION_OPTIONS = [
   ['', 'N/A / not sure yet'],
   ['remote', "Remote — not physically on-site"],
-  ['colab', 'CoLab (prefab shop)'],
-  ['event_site', 'Event site (main build)'],
-  ['both', 'Both CoLab and event site'],
+  ['colab', 'Before the event (upgrades and repairs)'],
+  ['event_site', 'On playa at Black Rock City'],
+  ['both', 'Both'],
 ];
 export const CREW_LOCATION_LABELS = {
   remote: 'Remote — not physically on-site',
-  colab: 'CoLab (prefab shop)',
-  event_site: 'Event site (main build)',
-  both: 'Both CoLab and event site',
+  colab: 'Before the event (upgrades and repairs)',
+  event_site: 'On playa at Black Rock City',
+  both: 'Both',
 };
 
 // ---------- rich text: strict allowlist sanitizer for admin-authored homepage copy ----------
@@ -224,6 +227,65 @@ export function sanitizeRichText(html) {
   return template.innerHTML;
 }
 
+// ---------- rich text editor (admin homepage copy + portfolio inline editor) ----------
+// A small toolbar over a contenteditable box, driven by document.execCommand -- deprecated
+// but still implemented everywhere for this basic a feature set, and it keeps the no-build
+// setup. Always pass the result through sanitizeRichText() before saving.
+export function richTextEditorHtml(bodyHtml) {
+  return `
+    <div class="rte">
+      <div class="rte-toolbar">
+        <button type="button" class="secondary" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button type="button" class="secondary" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button type="button" class="secondary" data-cmd="formatBlock" data-value="H2" title="Heading">H2</button>
+        <button type="button" class="secondary" data-cmd="formatBlock" data-value="P" title="Paragraph">¶</button>
+        <button type="button" class="secondary" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
+        <button type="button" class="secondary" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+        <button type="button" class="secondary" data-cmd="createLink" title="Add link">Link</button>
+        <button type="button" class="secondary" data-cmd="unlink" title="Remove link">Unlink</button>
+        <button type="button" class="secondary" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+      </div>
+      <div class="rte-editable" contenteditable="true">${bodyHtml || ''}</div>
+    </div>`;
+}
+
+export function wireRichTextEditor(container) {
+  const editable = container.querySelector('.rte-editable');
+  container.querySelectorAll('.rte-toolbar [data-cmd]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      editable.focus();
+      const cmd = btn.dataset.cmd;
+      if (cmd === 'createLink') {
+        const url = prompt('Link URL (https://... or mailto:...)');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+      } else {
+        document.execCommand(cmd, false, btn.dataset.value || null);
+      }
+    });
+  });
+}
+
+// ---------- storage + edge function helpers ----------
+// Public bucket URL for a stored photo. With { download: 'name.jpg' } the response is sent
+// as an attachment, which makes the browser save it (a plain <a download> is ignored for
+// cross-origin files like these).
+export function photoUrl(bucket, path, { download } = {}) {
+  if (!path) return '';
+  const base = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`;
+  return download ? `${base}?download=${encodeURIComponent(download)}` : base;
+}
+
+// supabase-js only fills `data` for 2xx responses from functions.invoke(); for anything
+// else the JSON body we returned has to be read off error.context (the raw Response).
+export async function readFunctionErrorBody(error) {
+  try {
+    return await error.context.json();
+  } catch {
+    return null;
+  }
+}
+
 // ---------- misc ----------
 export function escapeHtml(str) {
   if (str == null) return '';
@@ -250,6 +312,18 @@ export function rpcErrorMessage(err) {
     passcode_too_short: 'Passcode should be at least 3 characters.',
     contact_name_required: 'Please enter your name.',
     email_required: 'Please enter your email address.',
+    slug_taken: 'Another piece already uses that link name (slug). Pick a different one.',
+    slug_required: 'The link name (slug) can’t be empty.',
+    title_required: 'Please enter a title.',
+    month_required: 'Please pick the month this happened.',
+    section_not_empty: 'That section still has photos in it — move or delete them first.',
+    not_your_photo: 'You can only change photos you uploaded while logged in.',
+    rights_not_confirmed: 'Please confirm you have the right to share this photo.',
+    photographer_required: 'Please say who took this photo.',
+    bad_image: 'That file doesn’t look like a supported image (JPEG, PNG, or WebP up to 10 MB).',
+    email_invalid: 'That email address doesn’t look right.',
+    message_required: 'Please write a message.',
+    name_required: 'Please enter your name.',
     item_has_contributions: 'This item has contributions logged against it — remove those first, or archive the item instead.',
     claim_not_found: 'That claim link has already been used or isn’t valid anymore.',
     date_required: 'Pick the date you worked.',

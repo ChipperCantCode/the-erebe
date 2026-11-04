@@ -13,9 +13,6 @@ import {
   rpcErrorMessage,
   CREW_LOCATION_OPTIONS,
   CREW_LOCATION_LABELS,
-  BUILD_START_DATE,
-  BUILD_END_DATE,
-  BUILD_WINDOW_LABEL,
   renderAccountStatus,
 } from './shared.js';
 
@@ -36,12 +33,10 @@ const VOLUNTEER_FIELD_GROUPS = [
   { key: 'crew_location', label: 'Where will you help?', type: 'radio', options: CREW_LOCATION_OPTIONS },
   {
     key: 'arrival_date',
-    label: `Available from (build runs ${BUILD_WINDOW_LABEL})`,
+    label: 'Available from',
     type: 'date',
-    min: BUILD_START_DATE,
-    max: BUILD_END_DATE,
   },
-  { key: 'departure_date', label: 'Available until', type: 'date', min: BUILD_START_DATE, max: BUILD_END_DATE },
+  { key: 'departure_date', label: 'Available until', type: 'date' },
 ];
 
 const MATERIAL_FIELD_GROUPS = [
@@ -59,7 +54,7 @@ const MATERIAL_FIELD_GROUPS = [
     key: 'pickup_method',
     label: 'How can we get it from you?',
     type: 'select',
-    options: ['', 'Drop off at CoLab', 'Please pick it up from me', "I'll bring it to the build/event", 'Other'],
+    options: ['', 'I can drop it off', 'Please pick it up from me', "I'll bring it to the build/event", 'Other'],
     otherKey: 'pickup_method_other',
   },
   {
@@ -126,7 +121,7 @@ function renderSelectedItems() {
           </div>
           <div class="row" style="margin-top:6px;">
             <div>
-              <label class="field">Quantity</label>
+              ${s.unit === 'people' ? '' : '<label class="field">Quantity</label>'}
               ${quantityInputHtml(s, 'sel-qty', s.quantity)}
             </div>
           </div>
@@ -573,6 +568,14 @@ async function init() {
 
   renderSelectedItems();
   renderFullPicker();
+
+  // Nothing picked yet (e.g. arrived via "Sign Up to Help"): show the full list instead of
+  // hiding the only way forward behind a collapsed link.
+  if (Object.keys(selected).length === 0) {
+    const picker = document.getElementById('full-picker-details');
+    picker.open = true;
+    picker.querySelector('summary').textContent = "Pick what you'd like to help with";
+  }
 
   if (donorToken) {
     try {
