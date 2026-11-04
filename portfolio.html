@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inani — Portfolio · The Erebe</title>
+<meta name="description" content="Selected large-scale art and temple builds by Inani, lead artist of the Erebe: Burning Man, YOUtopia, Love Burn, Fern Burn, SOAK and more, 2019 to today." />
+<link rel="canonical" href="https://erebe.art/portfolio.html" />
+
+<meta property="og:type" content="profile" />
+<meta property="og:site_name" content="The Erebe" />
+<meta property="og:title" content="Inani — Portfolio" />
+<meta property="og:description" content="Selected large-scale art and temple builds by Inani, lead artist of the Erebe: Burning Man, YOUtopia, Love Burn, Fern Burn, SOAK and more, 2019 to today." />
+<meta property="og:url" content="https://erebe.art/portfolio.html" />
+<!-- Link-preview crawlers don't run JavaScript, so this has to be a fixed file. Once the
+     portfolio has photos, save a 1200x630 crop of a favorite as assets/og-portfolio.jpg
+     and point these two tags at it. -->
+<meta property="og:image" content="https://erebe.art/assets/og-image.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Line-drawing elevation of the Erebe temple against a dark background" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Inani — Portfolio" />
+<meta name="twitter:description" content="Selected large-scale art and temple builds by Inani, lead artist of the Erebe." />
+<meta name="twitter:image" content="https://erebe.art/assets/og-image.jpg" />
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="portfolio-page">
+<div class="wrap wrap-wide">
+  <header class="top">
+    <div class="brand">
+      <h1>Portfolio</h1>
+      <p>Inani · The Erebe</p>
+    </div>
+    <nav class="top-links">
+      <a href="index.html">← The Erebe</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="participate.html">Wish List</a>
+      <a href="contribute.html">Sign Up to Help</a>
+      <a href="my-list.html">My List</a>
+      <a href="feedback.html">Feedback</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <div id="account-status" class="hidden"></div>
+
+  <div id="admin-bar" class="admin-bar hidden">
+    <span class="admin-bar-label">Admin mode</span>
+    <span class="admin-bar-hint">Tap ✎ on any piece to edit it in place.</span>
+    <button type="button" class="small" id="pf-new-piece">+ New piece</button>
+    <a class="btn secondary small" href="admin.html#portfolio">Intro &amp; credits</a>
+  </div>
+
+  <div id="notice-area"></div>
+
+  <section class="pf-hero">
+    <p class="pf-eyebrow">Selected works</p>
+    <h2 class="pf-name">Inani</h2>
+    <blockquote class="pf-quote" id="pf-quote"></blockquote>
+  </section>
+
+  <div id="pf-list" aria-live="polite">
+    <p class="intro pf-loading">Loading the work…</p>
+  </div>
+
+  <section id="contact" class="pf-contact">
+    <h2 class="pf-section-heading">Contact Inani</h2>
+    <p class="intro">Commissions, collaborations, press, or just to say hello. Messages go privately to Inani's team.</p>
+    <div id="contact-notice"></div>
+    <form id="contact-form" class="card" novalidate>
+      <div class="row">
+        <div class="field-group">
+          <label class="field" for="ct-name">Your name</label>
+          <input type="text" id="ct-name" autocomplete="name" maxlength="200" required />
+        </div>
+        <div class="field-group">
+          <label class="field" for="ct-email">Email</label>
+          <input type="email" id="ct-email" autocomplete="email" maxlength="320" required />
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field" for="ct-message">Message</label>
+        <textarea id="ct-message" rows="6" maxlength="5000" required style="resize:vertical;"></textarea>
+      </div>
+      <!-- honeypot: hidden from people, irresistible to spam bots -->
+      <div class="hp-field" aria-hidden="true">
+        <label>Website <input type="text" id="ct-website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <button type="submit" id="ct-submit">Send message</button>
+    </form>
+  </section>
+
+  <section class="pf-credits" id="pf-credits"></section>
+
+  <footer class="foot">
+    <a href="index.html">The Erebe</a> · <a href="gallery.html">Gallery</a> · <a href="my-list.html">My List</a> · <a href="admin.html">Admin</a> · <a href="feedback.html">Feedback</a>
+  </footer>
+</div>
+
+<button type="button" id="pf-index-toggle" class="pf-index-toggle hidden" aria-expanded="false" aria-controls="pf-index">
+  <span aria-hidden="true">☰</span> Index
+</button>
+<div id="pf-index" class="pf-index" hidden>
+  <div class="pf-index-panel" role="dialog" aria-label="Jump to a piece">
+    <div class="pf-index-head">
+      <span>All pieces</span>
+      <button type="button" class="lb-icon" id="pf-index-close" aria-label="Close index">✕</button>
+    </div>
+    <div id="pf-index-list"></div>
+  </div>
+</div>
+
+<script type="module" src="portfolio.js"></script>
+</body>
+</html>

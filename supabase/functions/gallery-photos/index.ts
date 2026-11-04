@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
       const base = `sections/${sectionId}/${crypto.randomUUID()}`;
       const fullPath = `${base}-full.jpg`;
       const displayPath = `${base}-display.jpg`;
-      const opts = { cacheControl: "31536000", upsert: false };
+      const opts = { cacheControl: "3600" /* 1-hour cache: a deleted/taken-down photo stops loading from the CDN within the hour */, upsert: false };
       const a = await storage.upload(fullPath, full, { ...opts, contentType: full.type });
       if (a.error) return json({ error: "storage_upload_failed", detail: a.error.message }, 500);
       const b = await storage.upload(displayPath, display, { ...opts, contentType: display.type });

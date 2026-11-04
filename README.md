@@ -39,8 +39,22 @@ at https://chippercantcode.github.io/the-erebe/)
   (Inani goes live on Facebook roughly monthly to draw/plan) — the newest shows as a real
   embed on the homepage, older ones list underneath as a dated archive. No code changes
   needed for Inani to update the front page himself, add a new stream, or retire an old
-  one. The **Feedback** tab shows the history of everything submitted through the public
+  one. The **Portfolio** tab edits the portfolio's intro quote and credits footer, adds
+  pieces, and archives/unarchives them (the pieces themselves are edited in place on
+  `portfolio.html`). The **Inbox** tab holds Contact Inani messages and gallery photo
+  reports (`admin.html#inbox` opens it directly). The **Feedback** tab shows the history of everything submitted through the public
   feedback form (see below) and can also submit directly.
+- `portfolio.html` — Inani's art portfolio, the page to send grant reviewers. An intro
+  quote, then every project newest-first (with big year markers between them), each
+  with its date, event, Inani's role, a credit line, the story, and photos (the first
+  shown large, the rest in a grid; tap any photo for a full-screen viewer with
+  download / full size / share). A floating **Index** button opens a jump-to-piece menu,
+  and every piece has its own link: `erebe.art/portfolio.html#<slug>` (e.g. `#wobot`).
+  A **Contact Inani** form and the credits footer close the page. When you're logged in
+  as admin (log in on `admin.html` first, then open the page), each piece gets a ✎
+  button for **inline editing** — see "Portfolio" below.
+- `gallery.html` — community photo gallery, split into sections that admins create,
+  rename, reorder, and delete. Anyone can upload into any section — see "Gallery" below.
 - `feedback.html` — public, no login needed. Anyone can leave a bug report or feature
   request; it's published as a GitHub issue on this repo automatically, so Chipper gets
   a normal GitHub notification without any of this needing to run back through a
@@ -56,6 +70,12 @@ token, stored in the browser's `localStorage`. Row Level Security is enabled wit
 policies granted directly to the anon key — the tables themselves aren't reachable over
 the API at all, only through the specific RPC functions, which is what keeps donor
 emails/passcodes from being scraped by anyone poking at the public API.
+
+**Admin login:** name `admin` plus the shared admin passcode. The passcode is stored only
+as a bcrypt hash in the `admin_credentials` table (RLS on, no grants — not readable over
+the API) and is never written in this repo. Ask Chipper for it. (`002_functions_and_grants.sql`
+still shows the original placeholder passcode from before it was hashed; that function was
+replaced by `015_admin_passcode_hashed.sql` and that old value no longer works.)
 
 Connection details (`SUPABASE_URL` / anon key) are in `shared.js`. The anon key is safe
 to be public — it can't do anything except call the whitelisted RPC functions.
@@ -104,6 +124,109 @@ moving `github_issues_token` into `supabase secrets set` and reading it via
 The GitHub token needs exactly one permission: **Issues: Read and write**, scoped to
 only this repository (a fine-grained PAT, not a classic one) — nothing else it can
 reach or do.
+
+## Portfolio
+
+Tables (all locked down: RLS on, no grants — reachable only through the RPCs):
+
+- `portfolio_projects` — one row per piece: `slug` (the `#link` name), `title`,
+  `occurred_on` (a date, always the **1st of the month** — this sets page order),
+  `year_label` (optional display override like "2019, 2022"), `event`, `role`, `credit`,
+  `body_html` (paragraphs separated by `<br><br>`, same as `page_sections`), `sort_order`
+  (tiebreak within the same month; higher shows first), `archived`.
+- `portfolio_photos` — `project_id`, `storage_path` (the ~2000px "full" copy),
+  `display_path` (~1200px copy used on the page), `width`/`height`, `fit`
+  (`normal` / `enlarge` / `pad` — see below), `caption`, `sort_order`.
+- `portfolio_page` — single row: `intro_quote`, `footer_html` (credits).
+- `portfolio_project_versions` — **edit history.** A trigger snapshots a piece's row
+  every time it's saved or deleted (deletes also keep a list of its photos), so the
+  text of any earlier version can be brought back from the editor's **History** button.
+
+`get_portfolio()` (anon-callable) returns `{ page, projects: [...] }`, newest first, each
+project with `date_label` ("Feb 2024", or `year_label` when set) and its `photos`.
+`admin_get_portfolio(token)` returns the same plus archived pieces and the raw fields.
+
+**Inline editing** (`portfolio.js`): one piece at a time. Tapping ✎ on a second piece,
+clicking a link off the page, or pressing Cancel while there are unsaved changes shows a
+*Save / Discard / Keep editing* prompt; closing or reloading the tab shows the browser's
+own "Leave site?" warning (browsers don't allow a custom one there). Text fields save with
+the Save button. Photo uploads, replacements, deletions, and reordering save immediately.
+**Delete piece** asks for confirmation and offers **Archive** instead (archive is
+reversible, delete removes the photos for good).
+
+**Photos** are resized in the browser before upload (`media.js`: ~2000px long edge for
+the full copy, ~1200px for the display copy, JPEG at 85%), which also strips hidden
+EXIF data such as GPS location. If a photo is smaller than 1000px on its long edge, the
+uploader is asked whether to **enlarge it to match** the others (`fit = enlarge`) or
+**keep it small, centered with a border** (`fit = pad`), or skip it.
+
+Storage: public buckets `portfolio` and `gallery`, with **no storage policies**: reads
+work because the buckets are public, and writes only happen through Edge Functions using
+the service role. The site doesn't use Supabase Auth, so storage policies couldn't tell
+an admin apart from anyone else anyway:
+
+- `supabase/functions/portfolio-photos` — admin only. Checks the session token against
+  `admin_sessions` (not expired), then uploads / replaces / deletes photos (row and file
+  together) or deletes a whole piece.
+- Files are cached by the CDN for **1 hour**, so a deleted photo can keep loading for
+  up to an hour for anyone who already had its link.
+
+Link previews: crawlers don't run JavaScript, so `portfolio.html`'s `og:image` is a fixed
+file (currently the site-wide `assets/og-image.jpg`). Once the portfolio has photos, save
+a 1200×630 crop of a favorite as `assets/og-portfolio.jpg` and point the two image tags
+at it.
+
+## Gallery
+
+- `gallery_sections` (title, description, sort order) and `gallery_photos` (full +
+  display paths, size, `fit`, `caption`, `photographer`, `is_own_photo`,
+  `uploader_name`, `donor_id`, `status` visible/hidden). `get_gallery(donor_token)` is
+  public and never returns uploader IPs or donor ids. It marks your own uploads with `mine`.
+- Uploads go through `supabase/functions/gallery-photos` (public, **20 uploads/hour per
+  IP**). Following common practice for community photo pages, every upload requires
+  **a photographer credit** ("I took it" or the photographer's name) and **a
+  confirmation** that the uploader took it or has permission, and that anyone clearly
+  recognizable is OK with it being posted. GPS/EXIF data is stripped by the browser-side
+  resize. Collapsible guidelines on the page spell this out.
+- If the uploader is **logged in** (their My List account), the photo is tied to them and
+  they can later edit its caption or remove it (toggle "Show only my uploads"). Anonymous
+  uploads can't be changed afterwards except by an admin.
+- Admins (logged in on `admin.html`, then open the gallery) can add/rename/reorder/delete
+  sections (only empty ones can be deleted), move photos between sections, reorder,
+  edit captions/credits, hide/unhide, and delete.
+
+## Contact messages, reports, and notifications
+
+`supabase/functions/submit-message` handles both the **Contact Inani** form and the
+gallery's **⚑ report** button. Like feedback, each submission is saved to the database
+(`contact_messages` / `content_reports`) and also opens a GitHub issue so Chipper gets
+notified. **This repo is public**, so those issues are *alerts only* ("New message for
+Inani from Sam, read it in Admin → Inbox"). The sender's email, message, and report
+details stay in the database and show only in **Admin → Inbox**, where you can reply by
+email, archive messages, and hide / delete / restore reported photos. Close the GitHub
+alert once it's handled.
+
+- Rate limits: 5 contact messages and 10 reports per IP per hour. The contact form also
+  has a hidden "honeypot" field that silently drops spam bots.
+- Reported as **"I'm in this photo"** or **"my photo, posted without permission"**: the
+  photo is hidden immediately, pending review (consent first; an admin can restore it).
+  Any other reason: hidden automatically once **3 different visitors** report it.
+- Email delivery via **Resend** isn't set up yet. When it is, it slots into
+  `submit-message`, and the database rows stay the system of record.
+
+## Database migrations
+
+`supabase/migrations/` is the source of truth, numbered in the order applied. The live
+project's own migration history uses different names and timestamps for some of them
+(e.g. `015`–`017` here are live versions `20261103104309`, `20261103104416`,
+`20261103104643`, applied from a Claude chat; each file's header says so). The live
+project also has a `hours_and_shifts` migration (the `work_shifts` / `shift_signups` /
+`hour_logs` tables) that isn't recorded in this folder yet.
+
+Tip for future changes made through the Supabase connector: SQL containing the word
+`delete` triggers a confirmation prompt that may not show up in every Claude app, which
+makes the call time out. Deletes that can't be avoided (photos, sections) live in the
+Edge Functions instead.
 
 ## Running it
 
