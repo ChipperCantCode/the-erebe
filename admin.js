@@ -16,6 +16,7 @@ import {
   CREW_LOCATION_OPTIONS,
   CREW_LOCATION_LABELS,
 } from './shared.js';
+import { renderHoursTab, renderShiftsTab } from './admin-hours.js';
 
 const noticeArea = document.getElementById('notice-area');
 function notice(msg, kind = 'error') {
@@ -30,6 +31,7 @@ let dash = { wishlist_items: [], donors: [], change_requests: [] };
 let homepage = { hero_tagline: '', hero_subtagline: '', cta_text: '', sections: [] };
 let feedbackRequests = [];
 let buildStreams = [];
+let hoursDash = { people: [], roles: [], shifts: [], logs: [] };
 let portfolio = { page: {}, projects: [] };
 let inbox = { contacts: [], reports: [] };
 
@@ -82,6 +84,7 @@ async function loadDashboard() {
     { data: bsData, error: bsError },
     { data: pfData, error: pfError },
     { data: ibData, error: ibError },
+    { data: hrData, error: hrError },
   ] = await Promise.all([
     supabase.rpc('admin_get_dashboard', { p_session_token: token }),
     supabase.rpc('admin_get_homepage_content', { p_session_token: token }),
@@ -89,9 +92,10 @@ async function loadDashboard() {
     supabase.rpc('get_build_streams'),
     supabase.rpc('admin_get_portfolio', { p_session_token: token }),
     supabase.rpc('admin_get_inbox', { p_session_token: token }),
+    supabase.rpc('admin_get_hours_dashboard', { p_session_token: token }),
   ]);
-  if (error || hpError || fbError || bsError || pfError || ibError) {
-    notice(rpcErrorMessage(error || hpError || fbError || bsError || pfError || ibError));
+  if (error || hpError || fbError || bsError || pfError || ibError || hrError) {
+    notice(rpcErrorMessage(error || hpError || fbError || bsError || pfError || ibError || hrError));
     clearAdminToken();
     token = '';
     dashboard.classList.add('hidden');
@@ -104,10 +108,14 @@ async function loadDashboard() {
   buildStreams = bsData || [];
   portfolio = pfData || { page: {}, projects: [] };
   inbox = ibData || { contacts: [], reports: [] };
+  hoursDash = hrData;
   loginBox.classList.add('hidden');
   dashboard.classList.remove('hidden');
   renderChangeRequests();
   renderDonors();
+  const hoursCtx = { data: hoursDash, token, notice, reload: loadDashboard };
+  renderHoursTab(document.getElementById('tab-hours'), hoursCtx);
+  renderShiftsTab(document.getElementById('tab-shifts'), hoursCtx);
   renderWishlist();
   renderHomepage();
   renderFeedback();

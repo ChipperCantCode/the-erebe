@@ -320,6 +320,36 @@ footer.foot a { color: var(--text-faint); }
 .contrib-row .row { margin-top: 8px; }
 .contrib-row .field-group { margin-bottom: 8px; }
 
+/* ---------- volunteer hours + shifts ---------- */
+.hf-hint { font-size: 0.82rem; color: var(--text-faint); margin: 4px 0 10px; }
+.hours-total { font-size: 0.9rem; color: var(--text-dim); font-weight: normal; }
+.hour-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.hour-entry:last-child { border-bottom: none; }
+.hour-entry-main { min-width: 0; }
+.hour-entry-side { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 560px) {
+  .hour-entry { flex-direction: column; }
+  .hour-entry-side { justify-content: flex-start; }
+}
+.hours-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.hours-table th { text-align: left; color: var(--text-dim); font-weight: normal; border-bottom: 1px solid var(--border); padding: 4px 6px; }
+.hours-table td { padding: 6px; border-bottom: 1px dashed var(--border); }
+.hours-table tr:last-child td { border-bottom: none; }
+.shift-card.highlight { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+.shift-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
+.signup-list { margin: 4px 0; padding-left: 18px; font-size: 0.9rem; }
+.signup-list li { margin-bottom: 4px; }
+.signup-list button { margin-left: 6px; }
+.btn.small-btn { display: inline-block; padding: 5px 10px; font-size: 0.8rem; text-decoration: none; }
+#upcoming-shifts { margin-top: 40px; }
+
 /* ---------- landing page hero ---------- */
 .hero {
   text-align: center;
