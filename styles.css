@@ -849,8 +849,8 @@ dialog.modal::backdrop { background: rgba(8, 6, 5, 0.72); backdrop-filter: blur(
   color: var(--text); line-height: 1;
 }
 .pf-quote {
-  position: relative; max-width: 640px; margin: 0 auto; padding: 44px 12px 0;
-  font-style: italic; color: var(--text-dim); font-size: clamp(1.05rem, 3.6vw, 1.35rem); line-height: 1.55;
+  position: relative; max-width: none; margin: 0 auto; padding: 44px 0 0;
+  font-style: italic; color: var(--text-dim); font-size: clamp(1.05rem, 3.6vw, 1.3rem); line-height: 1.55;
 }
 .pf-quote::before {
   content: '“'; position: absolute; left: 50%; top: -0.08em; transform: translateX(-50%);
@@ -1052,7 +1052,7 @@ body.pf-editing .pf-index-toggle { display: none; }
 /* intro quote + credits: positioned so their ✎ sits top-right, like the pieces */
 .pf-page-part { position: relative; }
 .pf-page-part > .pf-edit-btn { top: 0; }
-#pf-intro-block { max-width: 680px; margin: 0 auto; padding: 0 48px; }
+#pf-intro-block { margin: 0 auto; padding: 0 24px; }
 #pf-intro-block.is-editing, .pf-credits.is-editing { padding: 0; text-align: left; }
 .pf-empty-part { text-align: center; padding: 10px 0; }
 .pf-quote-input { font-style: italic; font-size: 1.1rem; line-height: 1.55; }

@@ -153,7 +153,6 @@ function introViewHtml() {
   return `${pageEditBtn('intro')}
     <blockquote class="pf-quote">
       <p>${escapeHtml(page.intro_quote)}</p>
-      ${page.intro_attribution ? `<cite>— ${escapeHtml(page.intro_attribution)}</cite>` : ''}
     </blockquote>`;
 }
 
