@@ -55,6 +55,12 @@ header.top .brand h1 {
   letter-spacing: 0.03em;
   color: var(--accent);
 }
+/* Homepage brand mark: bigger than the per-page titles, and bigger still on phones
+   where it's the first thing anyone sees (issue #39). */
+header.top .brand h1.home-brand { font-size: 1.6rem; }
+@media (max-width: 560px) {
+  header.top .brand h1.home-brand { font-size: 2.2rem; letter-spacing: 0.04em; }
+}
 header.top .brand p {
   margin: 4px 0 0;
   color: var(--text-dim);
@@ -437,6 +443,11 @@ footer.foot a { color: var(--text-faint); }
   color: var(--text-faint);
   font-size: 0.88rem;
   margin: 0;
+}
+.hero-text .subtagline.next-stop {
+  color: var(--text-dim);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-art-slice,
