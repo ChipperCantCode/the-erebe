@@ -57,11 +57,8 @@ at https://chippercantcode.github.io/the-erebe/)
   items), and — under **Homepage Copy** — edit everything on the public landing page:
   the hero tagline/subtagline, the "Participate" pitch text, and a reorderable list of
   rich-text content sections (bold, headings, bulleted/numbered lists, links), via a
-  small toolbar over a `contenteditable` box, and a list of **build livestream** entries
-  (Inani goes live on Facebook roughly monthly to draw/plan) — the newest shows as a real
-  embed on the homepage, older ones list underneath as a dated archive. No code changes
-  needed for Inani to update the front page himself, add a new stream, or retire an old
-  one. The **Portfolio** tab edits the portfolio's intro quote and credits footer, adds
+  small toolbar over a `contenteditable` box. No code changes needed for Inani to update
+  the front page himself. The **Portfolio** tab edits the portfolio's intro quote and credits footer, adds
   pieces, and restores any piece deleted with the trash icon (the pieces themselves are
   edited in place on `portfolio.html`). The **Inbox** tab holds Contact Inani messages and gallery photo
   reports (`admin.html#inbox` opens it directly). The **Feedback** tab shows the history of everything submitted through the public
